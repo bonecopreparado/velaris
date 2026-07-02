@@ -1,0 +1,13 @@
+[General]
+ColorScheme=BreezeDark
+Name=Breeze Dark
+widgetStyle=Breeze
+
+[Icons]
+Theme=velaris
+
+[KDE]
+AnimationDurationFactor=0
+ColorScheme=BreezeDark
+LookAndFeelPackage=org.kde.breezedark.desktop
+SingleClick=false

@@ -1,0 +1,211 @@
+# ============================================================
+#  Velaris — packages.x86_64
+#  Caelum
+# ============================================================
+
+# BASE
+base
+base-devel
+linux-firmware
+amd-ucode
+intel-ucode
+
+# KERNEL CachyOS (BORE + LTO ativados por padrão)
+linux-cachyos
+linux-cachyos-headers
+cachyos-keyring
+cachyos-mirrorlist
+
+# BOOTLOADER
+grub
+efibootmgr
+syslinux
+os-prober
+
+# FILESYSTEM
+btrfs-progs
+e2fsprogs
+exfatprogs
+ntfs-3g
+dosfstools
+mtools
+xfsprogs
+
+# REDE
+networkmanager
+network-manager-applet
+iwd
+wpa_supplicant
+dhcpcd
+bind
+
+# BLUETOOTH
+bluez
+bluez-utils
+
+# ÁUDIO
+pipewire
+pipewire-alsa
+pipewire-pulse
+pipewire-jack
+wireplumber
+phonon-qt6-vlc
+
+# DISPLAY
+xorg-server
+xorg-xinit
+xorg-xrandr
+mesa
+vulkan-icd-loader
+vulkan-radeon
+vulkan-intel
+libva-intel-driver
+xf86-video-vesa
+xf86-video-qxl
+
+# DISPLAY MANAGER
+
+# KDE PLASMA (debloated)
+plasma-desktop
+plasma-workspace
+plasma-integration
+xdg-desktop-portal-kde
+plasma-nm
+plasma-pa
+plasma-systemmonitor
+plasma-disks
+plasma-firewall
+kscreen
+powerdevil
+bluedevil
+kwin
+breeze
+breeze-gtk
+kde-gtk-config
+kwallet-pam
+kwalletmanager
+kinfocenter
+ksystemlog
+plasma-workspace-wallpapers
+knotifications
+knotifyconfig
+
+# APPS KDE (essenciais)
+dolphin
+konsole
+kate
+spectacle
+gwenview
+ark
+kcalc
+partitionmanager
+filelight
+okular
+haruna
+dolphin-plugins
+
+# SISTEMA
+sudo
+polkit
+polkit-kde-agent
+git
+wget
+curl
+htop
+btop
+fastfetch
+reflector
+pacman-contrib
+bash-completion
+zsh
+zsh-completions
+flatpak
+xdg-user-dirs
+xdg-utils
+fuse2
+udisks2
+upower
+
+# FONTES
+terminus-font
+ttf-nerd-fonts-symbols
+ttf-nerd-fonts-symbols-mono
+noto-fonts
+noto-fonts-emoji
+noto-fonts-cjk
+ttf-liberation
+ttf-dejavu
+
+# MULTIMÍDIA
+gstreamer
+gst-plugins-base
+gst-plugins-good
+gst-plugins-bad
+gst-plugins-ugly
+gst-libav
+ffmpeg
+mpv
+
+# IMPRESSÃO
+cups
+cups-pdf
+print-manager
+
+# ARQUIVOS
+p7zip
+unrar
+zip
+unzip
+tar
+
+# NAVEGADOR
+firefox
+
+# LIVE / ARCHISO
+mkinitcpio
+mkinitcpio-archiso
+pv
+screen
+tmux
+
+# ── PERFORMANCE ───────────────────────────────────────────────────────────────
+zram-generator
+ananicy-cpp
+irqbalance
+gamemode
+lib32-gamemode
+
+# ── FIREWALL ─────────────────────────────────────────────────────────────────
+ufw
+
+# ── SHELL ────────────────────────────────────────────────────────────────────
+zsh-syntax-highlighting
+zsh-autosuggestions
+
+# ── BOOT SPLASH ──────────────────────────────────────────────────────────────
+plymouth
+
+# ── OOM PROTECTION ───────────────────────────────────────────────────────────
+earlyoom
+
+# ── INPUT / XORG ESSENCIAIS ───────────────────────────────────────────────────
+xf86-input-libinput
+xorg-xinput
+xorg-xauth
+xorg-xhost
+
+# ── VMWARE (para testes em VM) ────────────────────────────────────────────────
+open-vm-tools
+
+# ── DEPENDÊNCIAS DE SESSÃO ──────────────────────────────────────────────────────
+accountsservice
+sddm
+sddm-kcm
+xcb-util-cursor
+xf86-video-vmware
+
+# ── INSTALADOR ────────────────────────────────────────────────────────────────
+cachyos-calamares
+qt6-svg
+python-yaml
+python-jsonschema

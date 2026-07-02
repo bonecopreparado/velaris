@@ -1,0 +1,5 @@
+# Velaris — ZSH env global
+export EDITOR=kate
+export VISUAL=kate
+export BROWSER=firefox
+export TERMINAL=konsole

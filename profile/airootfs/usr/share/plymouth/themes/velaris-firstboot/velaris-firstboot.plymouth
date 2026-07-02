@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=Velaris (Primeiro Boot)
+Description=Tela de boot da Velaris com mensagem de primeiro uso
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/velaris-firstboot
+ScriptFile=/usr/share/plymouth/themes/velaris-firstboot/velaris-firstboot.script

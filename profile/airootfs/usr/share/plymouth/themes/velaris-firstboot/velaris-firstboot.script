@@ -1,0 +1,55 @@
+// Velaris — tela de boot com mensagem de primeira inicialização
+
+Window.SetBackgroundTopColor(0, 0, 0);
+Window.SetBackgroundBottomColor(0, 0, 0);
+
+screen_w = Window.GetWidth();
+screen_h = Window.GetHeight();
+
+// ── Logo centralizada ────────────────────────────────────────────────────────
+logo_image = Image("logo.png");
+logo_w = screen_w * 0.16;
+logo_scale = logo_w / logo_image.GetWidth();
+logo_h = logo_image.GetHeight() * logo_scale;
+logo_image = logo_image.Scale(logo_w, logo_h);
+
+logo_x = screen_w / 2 - logo_w / 2;
+logo_y = screen_h / 2 - logo_h / 2 - 50;
+
+logo_sprite = Sprite(logo_image);
+logo_sprite.SetX(logo_x);
+logo_sprite.SetY(logo_y);
+logo_sprite.SetZ(10);
+
+// ── Barra de progresso ───────────────────────────────────────────────────────
+bar_w = screen_w * 0.20;
+bar_h = 4;
+bar_x = screen_w / 2 - bar_w / 2;
+bar_y = logo_y + logo_h + 50;
+
+track_image = Image("bar_track.png").Scale(bar_w, bar_h);
+track_sprite = Sprite(track_image);
+track_sprite.SetX(bar_x);
+track_sprite.SetY(bar_y);
+track_sprite.SetZ(10);
+
+fill_base_image = Image("bar_fill.png");
+fill_sprite = Sprite();
+fill_sprite.SetX(bar_x);
+fill_sprite.SetY(bar_y);
+fill_sprite.SetZ(11);
+
+fun progress_callback(duration, progress)
+{
+    fill_w = bar_w * progress;
+    if (fill_w < 2) fill_w = 2;
+    fill_sprite.SetImage(fill_base_image.Scale(fill_w, bar_h));
+}
+Plymouth.SetBootProgressFunction(progress_callback);
+
+// ── Mensagem de primeiro boot (branca) ───────────────────────────────────────
+message_image = Image.Text("We are getting everything ready for you, this may take a moment.", 1, 1, 1, 1, "Sans 16");
+message_sprite = Sprite(message_image);
+message_sprite.SetX(screen_w / 2 - message_image.GetWidth() / 2);
+message_sprite.SetY(bar_y + bar_h + 28);
+message_sprite.SetZ(10);

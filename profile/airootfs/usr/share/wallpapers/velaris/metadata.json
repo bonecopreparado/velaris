@@ -1,0 +1,10 @@
+{
+    "KPlugin": {
+        "Authors": [{"Name": "Caelum"}],
+        "Description": "Velaris Wallpaper",
+        "Id": "velaris",
+        "License": "MIT",
+        "Name": "Velaris"
+    },
+    "X-KDE-PluginInfo-Name": "velaris"
+}

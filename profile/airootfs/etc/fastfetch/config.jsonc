@@ -1,0 +1,40 @@
+{
+  "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
+  "logo": {
+    "source": "/usr/share/velaris/logo_white.png",
+    "type": "auto",
+    "width": 26,
+    "height": 13,
+    "padding": { "top": 1 }
+  },
+  "display": {
+    "separator": " ",
+    "color": { "keys": "cyan", "title": "cyan" }
+  },
+  "modules": [
+    { "type": "custom", "format": "╭───────────────────────────╮" },
+    { "type": "custom", "format": "│        Velaris OS        │" },
+    { "type": "custom", "format": "│         by Caelum        │" },
+    { "type": "custom", "format": "╰───────────────────────────╯" },
+    "break",
+    { "type": "title",    "key": "│ ", "keyColor": "cyan" },
+    "separator",
+    { "type": "os",       "key": "│  OS",       "keyColor": "cyan" },
+    { "type": "kernel",   "key": "│  Kernel",   "keyColor": "cyan" },
+    { "type": "uptime",   "key": "│  Uptime",   "keyColor": "cyan" },
+    { "type": "packages", "key": "│ 󰏖 Pacotes",  "keyColor": "cyan" },
+    { "type": "shell",    "key": "│  Shell",    "keyColor": "cyan" },
+    { "type": "terminal", "key": "│  Terminal", "keyColor": "cyan" },
+    { "type": "de",       "key": "│  DE",       "keyColor": "cyan" },
+    { "type": "wm",       "key": "│  WM",       "keyColor": "cyan" },
+    "break",
+    { "type": "cpu",      "key": "│  CPU",      "keyColor": "cyan" },
+    { "type": "gpu",      "key": "│  GPU",      "keyColor": "cyan" },
+    { "type": "memory",   "key": "│  RAM",      "keyColor": "cyan" },
+    { "type": "disk",     "key": "│  Disco",    "keyColor": "cyan" },
+    { "type": "display",  "key": "│ 󰍹 Tela",     "keyColor": "cyan" },
+    { "type": "localip",  "key": "│  IP local", "keyColor": "cyan", "compact": true },
+    "break",
+    { "type": "colors", "paddingLeft": 2, "symbol": "circle" }
+  ]
+}

@@ -1,0 +1,6 @@
+[Greeter]
+Theme=org.kde.breezedark.desktop
+
+[Greeter][Wallpaper][org.kde.image][General]
+Image=file:///usr/share/wallpapers/velaris/contents/images/velaris_bloqueio.png
+FillMode=2

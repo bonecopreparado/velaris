@@ -1,0 +1,138 @@
+name: Build Velaris ISO
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'profile/**'
+      - 'build.sh'
+      - '.github/workflows/build.yml'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build ISO
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    container:
+      image: archlinux:latest
+      options: --privileged
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Instalar dependências de build
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm \
+            archiso git wget curl base-devel jq \
+            squashfs-tools libisoburn dosfstools mtools erofs-utils
+
+      - name: Configurar keyring do pacman
+        run: |
+          pacman-key --init
+          pacman-key --populate archlinux
+
+      - name: Configurar chave CachyOS
+        run: |
+          pacman-key --recv-keys F3B607488DB35A47 \
+            --keyserver hkps://keyserver.ubuntu.com || \
+          pacman-key --recv-keys F3B607488DB35A47 \
+            --keyserver hkps://keys.openpgp.org || true
+          pacman-key --lsign-key F3B607488DB35A47 || true
+
+      - name: Instalar keyring CachyOS
+        run: |
+          if ! grep -q "\[cachyos\]" /etc/pacman.conf; then
+            printf '\n[cachyos]\nServer = https://mirror.cachyos.org/repo/x86_64/$repo\nServer = https://repo.cachyos.org/$repo/x86_64\n' \
+              >> /etc/pacman.conf
+          fi
+          pacman -Sy --noconfirm cachyos-keyring cachyos-mirrorlist
+
+      - name: Build da ISO
+        run: |
+          chmod +x build.sh
+          ./build.sh
+
+      - name: Upload para Gofile
+        run: |
+          ISO_FILE=$(ls out/*.iso | head -1)
+          ISO_NAME=$(basename "$ISO_FILE")
+          echo "Fazendo upload de $ISO_NAME..."
+
+          # Pega servidor disponível
+          SERVER_RESP=$(curl -sf "https://api.gofile.io/servers" || echo "")
+          echo "Server response: $SERVER_RESP"
+
+          if echo "$SERVER_RESP" | jq -e '.data.servers[0].name' &>/dev/null; then
+            SERVER=$(echo "$SERVER_RESP" | jq -r '.data.servers[0].name')
+          else
+            # Fallback para servidores conhecidos
+            SERVER="store1"
+          fi
+          echo "Usando servidor: $SERVER"
+
+          # Upload com timeout generoso (ISO grande)
+          RESPONSE=$(curl -sf \
+            --max-time 3600 \
+            --retry 3 \
+            --retry-delay 10 \
+            -F "file=@${ISO_FILE}" \
+            "https://${SERVER}.gofile.io/uploadFile" || echo "UPLOAD_FAILED")
+
+          echo "Resposta upload: $RESPONSE"
+
+          if echo "$RESPONSE" | jq -e '.status == "ok"' &>/dev/null; then
+            DOWNLOAD_URL=$(echo "$RESPONSE" | jq -r '.data.downloadPage')
+            FILE_CODE=$(echo "$RESPONSE" | jq -r '.data.code')
+            echo "GOFILE_URL=$DOWNLOAD_URL" >> $GITHUB_ENV
+            echo "GOFILE_CODE=$FILE_CODE" >> $GITHUB_ENV
+            echo "UPLOAD_OK=true" >> $GITHUB_ENV
+          else
+            # Tenta servidor alternativo
+            echo "Tentando servidor alternativo..."
+            for SRV in store1 store2 store3 store4 store5; do
+              RESP2=$(curl -sf --max-time 3600 \
+                -F "file=@${ISO_FILE}" \
+                "https://${SRV}.gofile.io/uploadFile" || echo "")
+              if echo "$RESP2" | jq -e '.status == "ok"' &>/dev/null; then
+                DOWNLOAD_URL=$(echo "$RESP2" | jq -r '.data.downloadPage')
+                FILE_CODE=$(echo "$RESP2" | jq -r '.data.code')
+                echo "GOFILE_URL=$DOWNLOAD_URL" >> $GITHUB_ENV
+                echo "GOFILE_CODE=$FILE_CODE" >> $GITHUB_ENV
+                echo "UPLOAD_OK=true" >> $GITHUB_ENV
+                echo "Upload OK via $SRV"
+                break
+              fi
+            done
+          fi
+
+      - name: Salva resultado no Summary
+        run: |
+          ISO_FILE=$(ls out/*.iso | head -1)
+          ISO_SIZE=$(du -sh "$ISO_FILE" | cut -f1)
+
+          echo "## 🐱 Velaris — Build #${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${UPLOAD_OK:-false}" = "true" ]; then
+            echo "✅ **Build e upload concluídos!**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "| | |" >> $GITHUB_STEP_SUMMARY
+            echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+            echo "| 📥 **Download** | ${{ env.GOFILE_URL }} |" >> $GITHUB_STEP_SUMMARY
+            echo "| 🔑 **Código Gofile** | \`${{ env.GOFILE_CODE }}\` |" >> $GITHUB_STEP_SUMMARY
+            echo "| 💾 **Tamanho** | $ISO_SIZE |" >> $GITHUB_STEP_SUMMARY
+            echo "| 🐧 **Kernel** | linux-cachyos (BORE+LTO) |" >> $GITHUB_STEP_SUMMARY
+            echo "| 🖥️ **Desktop** | KDE Plasma (debloated) |" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "> ⚠️ Links do Gofile expiram em ~10 dias sem acesso." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ **Build OK mas upload falhou.**" >> $GITHUB_STEP_SUMMARY
+            echo "Tamanho da ISO: $ISO_SIZE" >> $GITHUB_STEP_SUMMARY
+            echo "Tente fazer o upload manualmente ou rode o workflow novamente." >> $GITHUB_STEP_SUMMARY
+          fi

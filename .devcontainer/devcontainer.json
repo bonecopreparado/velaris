@@ -1,0 +1,30 @@
+{
+  "name": "Velaris — Build Environment",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  "runArgs": [
+    "--privileged",
+    "--security-opt", "seccomp=unconfined"
+  ],
+  "mounts": [
+    "source=/dev,target=/dev,type=bind,consistency=cached"
+  ],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "mads-hartmann.bash-ide-vscode",
+        "timonwong.shellcheck",
+        "foxundermoon.shell-format",
+        "usernamehw.errorlens"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "zsh",
+        "editor.formatOnSave": true
+      }
+    }
+  },
+  "postCreateCommand": "bash /workspace/.devcontainer/setup.sh",
+  "remoteUser": "root"
+}

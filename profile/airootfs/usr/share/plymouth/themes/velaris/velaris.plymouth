@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=Velaris
+Description=Tela de boot da Velaris — logo + barra de progresso
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/velaris
+ScriptFile=/usr/share/plymouth/themes/velaris/velaris.script

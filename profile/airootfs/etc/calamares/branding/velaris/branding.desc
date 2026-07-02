@@ -1,0 +1,32 @@
+---
+componentName: velaris
+
+welcomeStyleCalamares: true
+welcomeExpandingLogo: false
+
+strings:
+  productName: Velaris
+  shortProductName: Velaris
+  version: Rolling
+  shortVersion: Rolling
+  versionedName: "Velaris Rolling"
+  shortVersionedName: "Velaris"
+  bootloaderEntryName: Velaris
+  productUrl: "https://github.com/bonecopreparado/velaris"
+  supportUrl: "https://github.com/bonecopreparado/velaris/issues"
+  knownIssuesUrl: "https://github.com/bonecopreparado/velaris/issues"
+  releaseNotesUrl: "https://github.com/bonecopreparado/velaris"
+
+images:
+  productLogo: "logo.png"
+  productIcon: "logo.png"
+  productWelcome: "logo.png"
+
+slideshow: "show.qml"
+slideshowAPI: 2
+
+style:
+  sidebarBackground: "#0d1b2a"
+  sidebarText: "#FFFFFF"
+  sidebarTextSelect: "#4a9eff"
+  sidebarTextHighlight: "#4a9eff"

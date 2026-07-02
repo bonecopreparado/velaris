@@ -1,0 +1,14 @@
+# Arquivos gerados pelo build
+out/
+work/
+
+# Temporários
+*.iso
+*.img
+/tmp/
+
+# Editor
+.vscode/settings.json
+*.swp
+*~
+.DS_Store

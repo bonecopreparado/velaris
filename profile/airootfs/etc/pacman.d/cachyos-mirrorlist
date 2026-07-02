@@ -1,0 +1,9 @@
+# CachyOS Mirrorlist — gerado pelo Velaris
+# Para atualizar: reflector ou editar manualmente
+
+## Brasil
+Server = https://mirror.cachyos.org/repo/x86_64/$repo
+
+## Global mirrors
+Server = https://repo.cachyos.org/$repo/x86_64
+Server = https://mirrors.cachyos.org/repo/x86_64/$repo

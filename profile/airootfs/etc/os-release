@@ -1,0 +1,10 @@
+NAME="Velaris"
+PRETTY_NAME="Velaris"
+ID=velaris
+ID_LIKE=arch
+BUILD_ID=rolling
+ANSI_COLOR="1;36"
+HOME_URL="https://github.com/bonecopreparado/velaris"
+SUPPORT_URL="https://github.com/bonecopreparado/velaris/issues"
+BUG_REPORT_URL="https://github.com/bonecopreparado/velaris/issues"
+LOGO=velaris-logo
