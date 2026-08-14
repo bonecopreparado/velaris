@@ -13,6 +13,7 @@ intel-ucode
 # KERNEL CachyOS (BORE + LTO ativados por padrão)
 linux-cachyos
 linux-cachyos-headers
+archlinux-keyring
 cachyos-keyring
 cachyos-mirrorlist
 

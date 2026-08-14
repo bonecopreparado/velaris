@@ -10,6 +10,16 @@ grep -qxF "en_US.UTF-8 UTF-8" /etc/locale.gen || echo "en_US.UTF-8 UTF-8" >> /et
 locale-gen
 ln -sf /usr/share/zoneinfo/America/Sao_Paulo /etc/localtime
 
+# ── Chaveiros do pacman ──────────────────────────────────────────────────────
+# Ter os pacotes *-keyring instalados não popula automaticamente o chaveiro
+# ativo do sistema live. Sem isto, o banco assinado do CachyOS é rejeitado.
+echo "[Velaris] Inicializando chaveiros Arch Linux e CachyOS..."
+rm -rf /etc/pacman.d/gnupg
+install -d -m 0755 /etc/pacman.d/gnupg
+pacman-key --init
+pacman-key --populate archlinux cachyos
+pacman-key --finger F3B607488DB35A47 >/dev/null
+
 # ── Desativa firstboot/initial-setup ─────────────────────────────────────────
 systemctl mask systemd-firstboot.service 2>/dev/null || true
 systemctl mask initial-setup.service 2>/dev/null || true
@@ -92,7 +102,9 @@ gtk-update-icon-cache -f /usr/share/icons/hicolor 2>/dev/null || true
 mkinitcpio -P 2>&1 || echo "[Velaris] AVISO: mkinitcpio -P falhou, verifique MODULES/HOOKS"
 
 # ── Limpeza ───────────────────────────────────────────────────────────────────
-pacman -Scc --noconfirm 2>/dev/null || true
+# Limpa somente pacotes baixados. `pacman -Scc` também remove os bancos de
+# sincronização e fazia o primeiro `pacman -S pacote` dizer que core/extra não
+# existiam.
 rm -rf /var/cache/pacman/pkg/* /tmp/*
 
 echo "[Velaris] Concluído ✓"

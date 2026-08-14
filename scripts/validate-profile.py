@@ -114,6 +114,7 @@ def validate_yaml_and_instances() -> dict[Path, object]:
         ("removeuser", "velaris"),
         ("packages", "cleanup"),
         ("shellprocess", "firstboot"),
+        ("shellprocess", "keyring"),
     }
     check(required_pairs <= instance_pairs, "instâncias críticas da instalação estão declaradas")
 
@@ -190,6 +191,11 @@ def validate_live_identity(documents: dict[Path, object]) -> None:
     customize = (PROFILE / "airootfs/root/customize_airootfs.sh").read_text(encoding="utf-8")
     check("passwd -l root" in customize and "passwd -d root" not in customize, "conta root do live permanece bloqueada")
     check("disable NetworkManager-wait-online.service" in customize, "sessão live não espera rede durante o boot")
+    check(
+        all(token in customize for token in ("pacman-key --init", "pacman-key --populate archlinux cachyos"))
+        and not re.search(r"^\s*pacman\s+-Scc\b", customize, flags=re.MULTILINE),
+        "live inicializa os chaveiros e preserva os bancos do pacman",
+    )
 
     policy = (PROFILE / "airootfs/etc/polkit-1/rules.d/49-calamares.rules").read_text(encoding="utf-8")
     restricted_policy = all(
@@ -220,6 +226,9 @@ def validate_packages_and_performance() -> None:
 
     required = {
         "linux-cachyos",
+        "archlinux-keyring",
+        "cachyos-keyring",
+        "cachyos-mirrorlist",
         "cachyos-calamares",
         "grub",
         "efibootmgr",
@@ -310,6 +319,15 @@ def validate_first_boot(documents: dict[Path, object]) -> None:
         "pacotes exclusivos do live têm remoção obrigatória no destino",
     )
 
+    keyring = documents.get(MODULES / "shellprocess_keyring.conf")
+    keyring_script = repr(keyring.get("script", [])) if isinstance(keyring, dict) else ""
+    check(
+        "pacman-key --init" in keyring_script
+        and "pacman-key --populate archlinux cachyos" in keyring_script
+        and "F3B607488DB35A47" in keyring_script,
+        "Calamares prepara o chaveiro Arch Linux e CachyOS no destino",
+    )
+
 
 def validate_shell() -> None:
     shell_files = sorted(ROOT.glob("*.sh")) + sorted((ROOT / ".devcontainer").glob("*.sh"))
@@ -357,6 +375,14 @@ def validate_workflow() -> None:
     check(
         'rm -rf -- "$GITHUB_WORKSPACE/work" "$GITHUB_WORKSPACE/out"' in workflow,
         "workflow limpa os artefatos temporários do runner",
+    )
+
+    build = (ROOT / "build.sh").read_text(encoding="utf-8")
+    check(
+        "unsquashfs" in build
+        and "--list-keys F3B607488DB35A47" in build
+        and "Banco do pacman ausente na ISO final" in build,
+        "build inspeciona chaveiros e bancos dentro do SquashFS final",
     )
 
 

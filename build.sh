@@ -122,6 +122,32 @@ mkarchiso -v \
     -o "$OUT_DIR" \
     "$PROFILE_DIR"
 
+# ── Verificação do sistema realmente gravado na ISO ─────────────────────────
+title "── Verificando pacman dentro da ISO ──"
+AIROOTFS_SFS="$WORK_DIR/iso/arch/x86_64/airootfs.sfs"
+[[ -f "$AIROOTFS_SFS" ]] || err "airootfs.sfs não encontrado para validação"
+
+VERIFY_DIR=$(mktemp -d)
+cleanup_verify() { rm -rf -- "$VERIFY_DIR"; }
+trap cleanup_verify EXIT
+
+unsquashfs -no-progress -d "$VERIFY_DIR" "$AIROOTFS_SFS" \
+    etc/pacman.d/gnupg var/lib/pacman/sync >/dev/null \
+    || err "Não foi possível extrair o chaveiro e os bancos da ISO"
+
+gpg --batch --homedir "$VERIFY_DIR/etc/pacman.d/gnupg" \
+    --list-keys F3B607488DB35A47 >/dev/null 2>&1 \
+    || err "A chave de assinatura do CachyOS não está na ISO final"
+
+for repo in core extra multilib cachyos; do
+    [[ -s "$VERIFY_DIR/var/lib/pacman/sync/$repo.db" ]] \
+        || err "Banco do pacman ausente na ISO final: $repo.db"
+done
+
+cleanup_verify
+trap - EXIT
+ok "Chaveiros e bancos do pacman presentes na ISO final"
+
 # ── Resultado ────────────────────────────────────────────────────────────────
 echo ""
 title "── Build concluído ──"
