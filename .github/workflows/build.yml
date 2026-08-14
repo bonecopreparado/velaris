@@ -5,23 +5,46 @@ on:
     branches: [main]
     paths:
       - 'profile/**'
+      - 'scripts/**'
       - 'build.sh'
       - '.github/workflows/build.yml'
   pull_request:
     branches: [main]
+    paths:
+      - 'profile/**'
+      - 'scripts/**'
+      - 'build.sh'
+      - '.github/workflows/build.yml'
   workflow_dispatch:
+
+concurrency:
+  group: velaris-iso-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
-    name: Build ISO
-    runs-on: ubuntu-latest
+    name: Build ISO — lenovo-server
+    # Nunca execute código de forks no runner particular. PRs criados dentro
+    # deste repositório continuam permitidos e servem para validar branches.
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 120
     permissions:
-      contents: write
+      contents: read
     container:
       image: archlinux:latest
       options: --privileged
 
     steps:
+      - name: Confirmar runner lenovo-server
+        run: |
+          echo "Runner: ${RUNNER_NAME:-desconhecido} (${RUNNER_OS:-?}/${RUNNER_ARCH:-?})"
+          test "${RUNNER_NAME:-}" = "lenovo-server"
+          test "${RUNNER_OS:-}" = "Linux"
+          test "${RUNNER_ARCH:-}" = "X64"
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -30,7 +53,8 @@ jobs:
           pacman -Syu --noconfirm
           pacman -S --noconfirm \
             archiso git wget curl base-devel jq \
-            squashfs-tools libisoburn dosfstools mtools erofs-utils
+            squashfs-tools libisoburn dosfstools mtools erofs-utils \
+            python python-yaml
 
       - name: Configurar keyring do pacman
         run: |
@@ -53,14 +77,19 @@ jobs:
           fi
           pacman -Sy --noconfirm cachyos-keyring cachyos-mirrorlist
 
+      - name: Validar perfil e Calamares
+        run: python3 scripts/validate-profile.py
+
       - name: Build da ISO
         run: |
           chmod +x build.sh
           ./build.sh
 
       - name: Upload para Gofile
+        if: github.event_name != 'pull_request'
         run: |
-          ISO_FILE=$(ls out/*.iso | head -1)
+          ISO_FILE=$(find out -maxdepth 1 -type f -name '*.iso' -print -quit)
+          test -n "$ISO_FILE"
           ISO_NAME=$(basename "$ISO_FILE")
           echo "Fazendo upload de $ISO_NAME..."
 
@@ -113,13 +142,19 @@ jobs:
 
       - name: Salva resultado no Summary
         run: |
-          ISO_FILE=$(ls out/*.iso | head -1)
+          ISO_FILE=$(find out -maxdepth 1 -type f -name '*.iso' -print -quit)
+          test -n "$ISO_FILE"
           ISO_SIZE=$(du -sh "$ISO_FILE" | cut -f1)
 
           echo "## 🐱 Velaris — Build #${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          if [ "${UPLOAD_OK:-false}" = "true" ]; then
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "✅ **Build de validação concluído.**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "O upload externo foi ignorado porque este build veio de um pull request." >> $GITHUB_STEP_SUMMARY
+            echo "Tamanho da ISO: $ISO_SIZE" >> $GITHUB_STEP_SUMMARY
+          elif [ "${UPLOAD_OK:-false}" = "true" ]; then
             echo "✅ **Build e upload concluídos!**" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "| | |" >> $GITHUB_STEP_SUMMARY
@@ -136,3 +171,12 @@ jobs:
             echo "Tamanho da ISO: $ISO_SIZE" >> $GITHUB_STEP_SUMMARY
             echo "Tente fazer o upload manualmente ou rode o workflow novamente." >> $GITHUB_STEP_SUMMARY
           fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Executor: \`${RUNNER_NAME}\` (\`${RUNNER_OS}/${RUNNER_ARCH}\`)" >> $GITHUB_STEP_SUMMARY
+
+      - name: Limpar temporários do runner
+        if: always()
+        run: |
+          test -n "${GITHUB_WORKSPACE:-}"
+          rm -rf -- "$GITHUB_WORKSPACE/work" "$GITHUB_WORKSPACE/out"

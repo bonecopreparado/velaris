@@ -1,1 +1,9 @@
-# Imagens da Velaris — serão adicionadas
+# Velaris
+
+Distribuição baseada em Arch Linux com KDE Plasma e kernel CachyOS.
+
+Projeto: https://github.com/bonecopreparado/velaris
+Suporte: https://github.com/bonecopreparado/velaris/issues
+
+Wayland é a sessão principal. A sessão Plasma X11 pode ser escolhida no SDDM
+quando algum aplicativo ou driver precisar de compatibilidade adicional.

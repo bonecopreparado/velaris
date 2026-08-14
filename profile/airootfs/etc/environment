@@ -1,14 +1,4 @@
 # Velaris — Variáveis de ambiente
 
-# AMD Vulkan — força driver RADV (melhor performance em jogos)
-AMD_VULKAN_ICD=RADV
-
-# Desativa VSync forçado do compositor em apps não-KDE
-__GL_SYNC_TO_VBLANK=0
-
-# Mesa — habilita shader cache
-MESA_SHADER_CACHE_DISABLE=false
-
 # Qt — usa estilo do sistema
 QT_QPA_PLATFORMTHEME=kde
-QT_AUTO_SCREEN_SCALE_FACTOR=1

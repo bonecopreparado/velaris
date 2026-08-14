@@ -1,33 +1,71 @@
-import QtQuick 2.0
+import QtQuick 2.15
 import calamares.slideshow 1.0
 
 Presentation {
     id: presentation
 
     Slide {
+        anchors.fill: parent
+
         Image {
-            id: background
-            source: "logo.png"
-            width: 200
-            height: 200
-            fillMode: Image.PreserveAspectFit
+            anchors.fill: parent
+            source: "file:///usr/share/wallpapers/velaris/contents/images/velaris_desktop.png"
+            fillMode: Image.PreserveAspectCrop
+            smooth: true
+        }
+
+        Rectangle {
+            anchors.fill: parent
+            color: "#b30d1b2a"
+        }
+
+        Column {
+            width: parent.width * 0.82
+            spacing: 18
             anchors.centerIn: parent
+
+            Image {
+                width: Math.min(220, parent.width * 0.45)
+                height: width
+                anchors.horizontalCenter: parent.horizontalCenter
+                source: "logo.png"
+                fillMode: Image.PreserveAspectFit
+                smooth: true
+                mipmap: true
+            }
+
+            Text {
+                width: parent.width
+                text: qsTr("Instalando a Velaris")
+                color: "#ffffff"
+                font.pixelSize: 28
+                font.bold: true
+                horizontalAlignment: Text.AlignHCenter
+            }
+
+            Text {
+                width: parent.width
+                text: qsTr("Preparando um sistema rápido, estável e pronto para usar.")
+                color: "#d7e8ff"
+                font.pixelSize: 16
+                wrapMode: Text.WordWrap
+                horizontalAlignment: Text.AlignHCenter
+            }
+
+            Text {
+                width: parent.width
+                text: qsTr("Arch Linux  •  KDE Plasma  •  Kernel CachyOS")
+                color: "#78b7ff"
+                font.pixelSize: 14
+                horizontalAlignment: Text.AlignHCenter
+            }
         }
-        Text {
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.top: background.bottom
-            anchors.topMargin: 20
-            text: "Installing Velaris OS..."
-            color: "white"
-            font.pixelSize: 24
-        }
-        Text {
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.bottom: parent.bottom
-            anchors.bottomMargin: 40
-            text: "Arch Linux • KDE Plasma • CachyOS Kernel"
-            color: "#aaaaaa"
-            font.pixelSize: 14
-        }
+    }
+
+    function onActivate() {
+        presentation.currentSlide = 0;
+    }
+
+    function onLeave() {
     }
 }

@@ -30,13 +30,13 @@ ntfs-3g
 dosfstools
 mtools
 xfsprogs
+cryptsetup
+lvm2
+mkinitcpio-openswap
 
 # REDE
 networkmanager
-network-manager-applet
-iwd
 wpa_supplicant
-dhcpcd
 bind
 
 # BLUETOOTH
@@ -59,7 +59,9 @@ mesa
 vulkan-icd-loader
 vulkan-radeon
 vulkan-intel
+vulkan-nouveau
 libva-intel-driver
+intel-media-driver
 xf86-video-vesa
 xf86-video-qxl
 
@@ -68,6 +70,7 @@ xf86-video-qxl
 # KDE PLASMA (debloated)
 plasma-desktop
 plasma-workspace
+plasma-x11-session
 plasma-integration
 xdg-desktop-portal-kde
 plasma-nm
@@ -125,6 +128,7 @@ xdg-utils
 fuse2
 udisks2
 upower
+power-profiles-daemon
 
 # FONTES
 terminus-font
@@ -171,6 +175,7 @@ tmux
 # ── PERFORMANCE ───────────────────────────────────────────────────────────────
 zram-generator
 ananicy-cpp
+cachyos-ananicy-rules
 irqbalance
 gamemode
 lib32-gamemode
@@ -207,5 +212,3 @@ xf86-video-vmware
 # ── INSTALADOR ────────────────────────────────────────────────────────────────
 cachyos-calamares
 qt6-svg
-python-yaml
-python-jsonschema

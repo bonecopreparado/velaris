@@ -1,10 +1,3 @@
-[Compositing]
-AnimationSpeed=0
-Enabled=true
-GLCore=true
-Backend=OpenGL
-LatencyPolicy=ExtremelyLow
-
 [Effect-Blur]
 Enabled=false
 
