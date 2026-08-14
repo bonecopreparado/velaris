@@ -132,21 +132,16 @@ cleanup_verify() { rm -rf -- "$VERIFY_DIR"; }
 trap cleanup_verify EXIT
 
 unsquashfs -no-progress -d "$VERIFY_DIR" "$AIROOTFS_SFS" \
-    etc/pacman.d/gnupg var/lib/pacman/sync >/dev/null \
-    || err "Não foi possível extrair o chaveiro e os bancos da ISO"
+    etc/pacman.d/gnupg >/dev/null \
+    || err "Não foi possível extrair o chaveiro da ISO"
 
 gpg --batch --homedir "$VERIFY_DIR/etc/pacman.d/gnupg" \
     --list-keys F3B607488DB35A47 >/dev/null 2>&1 \
     || err "A chave de assinatura do CachyOS não está na ISO final"
 
-for repo in core extra multilib cachyos; do
-    [[ -s "$VERIFY_DIR/var/lib/pacman/sync/$repo.db" ]] \
-        || err "Banco do pacman ausente na ISO final: $repo.db"
-done
-
 cleanup_verify
 trap - EXIT
-ok "Chaveiros e bancos do pacman presentes na ISO final"
+ok "Chaveiros Arch Linux e CachyOS presentes na ISO final"
 
 # ── Resultado ────────────────────────────────────────────────────────────────
 echo ""

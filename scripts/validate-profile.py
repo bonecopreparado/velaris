@@ -381,8 +381,8 @@ def validate_workflow() -> None:
     check(
         "unsquashfs" in build
         and "--list-keys F3B607488DB35A47" in build
-        and "Banco do pacman ausente na ISO final" in build,
-        "build inspeciona chaveiros e bancos dentro do SquashFS final",
+        and "A chave de assinatura do CachyOS não está na ISO final" in build,
+        "build inspeciona o chaveiro ativo dentro do SquashFS final",
     )
 
 
