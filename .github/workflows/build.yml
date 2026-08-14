@@ -92,52 +92,34 @@ jobs:
           ISO_NAME=$(basename "$ISO_FILE")
           echo "Fazendo upload de $ISO_NAME..."
 
-          # Pega servidor disponível
-          SERVER_RESP=$(curl -sf "https://api.gofile.io/servers" || echo "")
-          echo "Server response: $SERVER_RESP"
+          # A API atual usa proxies globais/regionais, não os antigos storeN.
+          for ENDPOINT in \
+            "https://upload-sa-sao.gofile.io/uploadfile" \
+            "https://upload.gofile.io/uploadfile" \
+            "https://upload-na-phx.gofile.io/uploadfile"; do
+            echo "Tentando upload via $ENDPOINT"
+            RESPONSE=$(curl -fSs \
+              --connect-timeout 30 \
+              --max-time 3600 \
+              --retry 2 \
+              --retry-delay 10 \
+              --retry-connrefused \
+              -F "file=@${ISO_FILE}" \
+              "$ENDPOINT" || echo "")
 
-          if echo "$SERVER_RESP" | jq -e '.data.servers[0].name' &>/dev/null; then
-            SERVER=$(echo "$SERVER_RESP" | jq -r '.data.servers[0].name')
-          else
-            # Fallback para servidores conhecidos
-            SERVER="store1"
-          fi
-          echo "Usando servidor: $SERVER"
+            if echo "$RESPONSE" | jq -e '.status == "ok"' &>/dev/null; then
+              DOWNLOAD_URL=$(echo "$RESPONSE" | jq -r '.data.downloadPage')
+              FILE_CODE=$(echo "$RESPONSE" | jq -r \
+                '.data.code // .data.parentFolder // .data.folderId // "n/a"')
+              echo "GOFILE_URL=$DOWNLOAD_URL" >> "$GITHUB_ENV"
+              echo "GOFILE_CODE=$FILE_CODE" >> "$GITHUB_ENV"
+              echo "UPLOAD_OK=true" >> "$GITHUB_ENV"
+              echo "Upload concluído: $DOWNLOAD_URL"
+              break
+            fi
 
-          # Upload com timeout generoso (ISO grande)
-          RESPONSE=$(curl -sf \
-            --max-time 3600 \
-            --retry 3 \
-            --retry-delay 10 \
-            -F "file=@${ISO_FILE}" \
-            "https://${SERVER}.gofile.io/uploadFile" || echo "UPLOAD_FAILED")
-
-          echo "Resposta upload: $RESPONSE"
-
-          if echo "$RESPONSE" | jq -e '.status == "ok"' &>/dev/null; then
-            DOWNLOAD_URL=$(echo "$RESPONSE" | jq -r '.data.downloadPage')
-            FILE_CODE=$(echo "$RESPONSE" | jq -r '.data.code')
-            echo "GOFILE_URL=$DOWNLOAD_URL" >> $GITHUB_ENV
-            echo "GOFILE_CODE=$FILE_CODE" >> $GITHUB_ENV
-            echo "UPLOAD_OK=true" >> $GITHUB_ENV
-          else
-            # Tenta servidor alternativo
-            echo "Tentando servidor alternativo..."
-            for SRV in store1 store2 store3 store4 store5; do
-              RESP2=$(curl -sf --max-time 3600 \
-                -F "file=@${ISO_FILE}" \
-                "https://${SRV}.gofile.io/uploadFile" || echo "")
-              if echo "$RESP2" | jq -e '.status == "ok"' &>/dev/null; then
-                DOWNLOAD_URL=$(echo "$RESP2" | jq -r '.data.downloadPage')
-                FILE_CODE=$(echo "$RESP2" | jq -r '.data.code')
-                echo "GOFILE_URL=$DOWNLOAD_URL" >> $GITHUB_ENV
-                echo "GOFILE_CODE=$FILE_CODE" >> $GITHUB_ENV
-                echo "UPLOAD_OK=true" >> $GITHUB_ENV
-                echo "Upload OK via $SRV"
-                break
-              fi
-            done
-          fi
+            echo "Endpoint não concluiu o upload."
+          done
 
       - name: Salva resultado no Summary
         run: |
