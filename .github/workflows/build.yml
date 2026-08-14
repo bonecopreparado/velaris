@@ -86,7 +86,6 @@ jobs:
           ./build.sh
 
       - name: Upload para Gofile
-        if: github.event_name != 'pull_request'
         run: |
           ISO_FILE=$(find out -maxdepth 1 -type f -name '*.iso' -print -quit)
           test -n "$ISO_FILE"
@@ -149,12 +148,7 @@ jobs:
           echo "## 🐱 Velaris — Build #${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo "✅ **Build de validação concluído.**" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "O upload externo foi ignorado porque este build veio de um pull request." >> $GITHUB_STEP_SUMMARY
-            echo "Tamanho da ISO: $ISO_SIZE" >> $GITHUB_STEP_SUMMARY
-          elif [ "${UPLOAD_OK:-false}" = "true" ]; then
+          if [ "${UPLOAD_OK:-false}" = "true" ]; then
             echo "✅ **Build e upload concluídos!**" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "| | |" >> $GITHUB_STEP_SUMMARY
