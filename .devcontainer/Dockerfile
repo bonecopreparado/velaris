@@ -21,6 +21,8 @@ RUN pacman -Syu --noconfirm && \
         dosfstools \
         mtools \
         erofs-utils \
+        python \
+        python-yaml \
         openssl \
         gnupg \
     && pacman -Scc --noconfirm

@@ -1,0 +1,16 @@
+[Unit]
+Description=Finalize Velaris first-boot branding
+ConditionPathExists=/var/lib/velaris/firstboot-plymouth
+ConditionPathExists=!/run/archiso/bootmnt
+After=local-fs.target
+
+[Service]
+Type=oneshot
+Nice=19
+IOSchedulingClass=idle
+ExecStart=/usr/bin/plymouth-set-default-theme velaris
+ExecStart=/usr/bin/mkinitcpio -P
+ExecStart=/usr/bin/rm -f /var/lib/velaris/firstboot-plymouth
+
+[Install]
+WantedBy=multi-user.target

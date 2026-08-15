@@ -9,6 +9,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROFILE_DIR="$SCRIPT_DIR/profile"
 OUT_DIR="$SCRIPT_DIR/out"
 WORK_DIR="$SCRIPT_DIR/work"
+VALIDATOR="$SCRIPT_DIR/scripts/validate-profile.py"
 
 CYAN='\033[0;36m'; GREEN='\033[0;32m'
 RED='\033[0;31m'; YELLOW='\033[1;33m'; NC='\033[0m'
@@ -36,16 +37,21 @@ echo -e "${NC}"
 # ── Verificações ─────────────────────────────────────────────────────────────
 title "── Verificações ──"
 
+command -v python3 &>/dev/null || err "python não encontrado. Instale: pacman -S python python-yaml"
+[[ -f "$VALIDATOR" ]] || err "Validador não encontrado: $VALIDATOR"
+python3 "$VALIDATOR" || err "O perfil falhou na validação; o build foi interrompido."
+
 [[ $EUID -ne 0 ]] && err "Este script precisa ser executado como root (sudo ./build.sh)"
 command -v mkarchiso &>/dev/null || err "archiso não encontrado. Instale com: pacman -S archiso"
 
+ok "Perfil validado"
 ok "Rodando como root"
 ok "mkarchiso disponível"
 
 # ── Configurar repositório CachyOS ───────────────────────────────────────────
 title "── Configurando CachyOS ──"
 
-if ! pacman -Qi cachyos-keyring &>/dev/null; then
+if ! pacman -Qq cachyos-keyring cachyos-mirrorlist &>/dev/null; then
     log "Instalando cachyos-keyring via pacman..."
 
     # Recebe e assina a chave CachyOS antes de adicionar o repo
@@ -86,32 +92,6 @@ pacman-key --lsign-key F3B607488DB35A47 2>/dev/null || true
 
 ok "Chave CachyOS configurada"
 
-# ── Criar symlinks de serviços no airootfs ───────────────────────────────────
-title "── Habilitando serviços no airootfs ──"
-
-SYSTEMD_DIR="$PROFILE_DIR/airootfs/etc/systemd/system"
-
-enable_service() {
-    local service="$1"
-    local target_dir="$2"
-    mkdir -p "$SYSTEMD_DIR/$target_dir"
-    ln -sf "/usr/lib/systemd/system/$service" \
-        "$SYSTEMD_DIR/$target_dir/$service" 2>/dev/null || true
-    log "Habilitado: $service → $target_dir"
-}
-
-# Display manager
-ln -sf "/usr/lib/systemd/system/sddm.service" \
-    "$SYSTEMD_DIR/display-manager.service" 2>/dev/null || true
-
-# Serviços essenciais
-enable_service "NetworkManager.service"              "multi-user.target.wants"
-enable_service "NetworkManager-dispatcher.service"  "multi-user.target.wants"
-enable_service "NetworkManager-wait-online.service" "network-online.target.wants"
-enable_service "bluetooth.service"                  "multi-user.target.wants"
-
-ok "Serviços configurados nos symlinks"
-
 # ── Limpeza ─────────────────────────────────────────────────────────────────
 title "── Limpando build anterior ──"
 
@@ -120,12 +100,14 @@ if [[ -d "$WORK_DIR" ]]; then
     rm -rf "$WORK_DIR"
 fi
 mkdir -p "$OUT_DIR"
+
+# Impede que um build anterior seja confundido com o resultado atual.
+find "$OUT_DIR" -maxdepth 1 -type f \( -name '*.iso' -o -name '*.iso.sha256' \) -delete
 ok "Limpeza concluída"
 
 # ── Timestamp e rótulo ───────────────────────────────────────────────────────
 BUILD_DATE=$(date +%Y.%m.%d)
-ISO_LABEL="VELARIS_$(date +%Y%m)"
-log "Build date: $BUILD_DATE | Label: $ISO_LABEL"
+log "Build date: $BUILD_DATE"
 
 # ── Build da ISO ─────────────────────────────────────────────────────────────
 title "── Build da ISO ──"
@@ -140,11 +122,37 @@ mkarchiso -v \
     -o "$OUT_DIR" \
     "$PROFILE_DIR"
 
+# ── Verificação do sistema realmente gravado na ISO ─────────────────────────
+title "── Verificando pacman dentro da ISO ──"
+AIROOTFS_SFS="$WORK_DIR/iso/arch/x86_64/airootfs.sfs"
+[[ -f "$AIROOTFS_SFS" ]] || err "airootfs.sfs não encontrado para validação"
+
+VERIFY_DIR=$(mktemp -d)
+cleanup_verify() { rm -rf -- "$VERIFY_DIR"; }
+trap cleanup_verify EXIT
+
+unsquashfs -no-progress -d "$VERIFY_DIR" "$AIROOTFS_SFS" \
+    etc/pacman.d/gnupg >/dev/null \
+    || err "Não foi possível extrair o chaveiro da ISO"
+
+gpg --batch --homedir "$VERIFY_DIR/etc/pacman.d/gnupg" \
+    --list-keys F3B607488DB35A47 >/dev/null 2>&1 \
+    || err "A chave de assinatura do CachyOS não está na ISO final"
+
+cleanup_verify
+trap - EXIT
+ok "Chaveiros Arch Linux e CachyOS presentes na ISO final"
+
 # ── Resultado ────────────────────────────────────────────────────────────────
 echo ""
 title "── Build concluído ──"
-ISO_FILE=$(ls "$OUT_DIR"/*.iso 2>/dev/null | head -1)
-if [[ -n "$ISO_FILE" ]]; then
+shopt -s nullglob
+ISO_FILES=("$OUT_DIR"/*.iso)
+shopt -u nullglob
+ISO_FILE="${ISO_FILES[0]:-}"
+
+if [[ -n "$ISO_FILE" && -f "$ISO_FILE" ]]; then
+    sha256sum "$ISO_FILE" > "${ISO_FILE}.sha256"
     ok "ISO gerada com sucesso!"
     echo ""
     echo -e "  ${BOLD}Arquivo:${NC} $ISO_FILE"

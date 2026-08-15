@@ -1,6 +1,9 @@
 polkit.addRule(function(action, subject) {
-    if (action.id == "org.freedesktop.policykit.exec" &&
-        subject.isInGroup("wheel")) {
+    if (action.id === "io.calamares.calamares.pkexec.run" &&
+        action.lookup("program") === "/usr/bin/calamares" &&
+        subject.user === "velaris" &&
+        subject.local &&
+        subject.active) {
         return polkit.Result.YES;
     }
 });

@@ -5,10 +5,20 @@ set -euo pipefail
 echo "[Velaris] Customizando airootfs..."
 
 # ── Locale e timezone ─────────────────────────────────────────────────────────
-echo "pt_BR.UTF-8 UTF-8" >> /etc/locale.gen
-echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
+grep -qxF "pt_BR.UTF-8 UTF-8" /etc/locale.gen || echo "pt_BR.UTF-8 UTF-8" >> /etc/locale.gen
+grep -qxF "en_US.UTF-8 UTF-8" /etc/locale.gen || echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
 locale-gen
 ln -sf /usr/share/zoneinfo/America/Sao_Paulo /etc/localtime
+
+# ── Chaveiros do pacman ──────────────────────────────────────────────────────
+# Ter os pacotes *-keyring instalados não popula automaticamente o chaveiro
+# ativo do sistema live. Sem isto, o banco assinado do CachyOS é rejeitado.
+echo "[Velaris] Inicializando chaveiros Arch Linux e CachyOS..."
+rm -rf /etc/pacman.d/gnupg
+install -d -m 0755 /etc/pacman.d/gnupg
+pacman-key --init
+pacman-key --populate archlinux cachyos
+pacman-key --finger F3B607488DB35A47 >/dev/null
 
 # ── Desativa firstboot/initial-setup ─────────────────────────────────────────
 systemctl mask systemd-firstboot.service 2>/dev/null || true
@@ -25,13 +35,11 @@ if ! id "velaris" &>/dev/null; then
         velaris
 fi
 
-# Remove trava de senha (PAM precisa disso pro autologin)
-passwd -d velaris
-passwd -d root
-
 # Senha de acesso manual caso o autologin não funcione
 echo "velaris:velaris" | chpasswd
-echo "root:velaris" | chpasswd
+
+# Root não recebe senha conhecida. Administração no live é feita via sudo.
+passwd -l root
 
 # Sudo sem senha no live
 echo "velaris ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/velaris
@@ -40,21 +48,22 @@ chmod 440 /etc/sudoers.d/velaris
 # ── Serviços ──────────────────────────────────────────────────────────────────
 systemctl enable NetworkManager.service
 systemctl enable NetworkManager-dispatcher.service
+systemctl disable NetworkManager-wait-online.service 2>/dev/null || true
 systemctl enable sddm.service
 systemctl enable bluetooth.service
 systemctl enable cups.service      2>/dev/null || true
-systemctl enable udisks2.service
-systemctl enable upower.service
 systemctl enable irqbalance.service
 systemctl enable earlyoom.service
-systemctl enable systemd-zram-setup@zram0.service
+systemctl enable systemd-timesyncd.service 2>/dev/null || true
+systemctl enable fstrim.timer 2>/dev/null || true
 
 # open-vm-tools: causa conflito com Plasma Wayland em VMware
 # Desativado por padrão — usuário habilita manualmente se precisar
 # systemctl enable vmtoolsd.service  # desativado: causa hard lockup com vmwgfx/Wayland
 
-# ananicy-cpp: desativado no live (sem pacote de regras)
-systemctl disable ananicy-cpp.service 2>/dev/null || true
+# As regras oficiais do CachyOS estão na imagem, então o daemon pode operar
+# sem ficar falhando em loop.
+systemctl enable ananicy-cpp.service 2>/dev/null || true
 
 # ── UFW ───────────────────────────────────────────────────────────────────────
 ufw default deny incoming
@@ -71,9 +80,8 @@ chown velaris:velaris /home/velaris/.zshrc 2>/dev/null || true
 su - velaris -c "xdg-user-dirs-update" 2>/dev/null || true
 
 # ── Plymouth ─────────────────────────────────────────────────────────────────
-plymouth-set-default-theme velaris-firstboot 2>/dev/null || plymouth-set-default-theme spinner 2>/dev/null || true
+plymouth-set-default-theme velaris 2>/dev/null || plymouth-set-default-theme spinner 2>/dev/null || true
 
-# ── Garante que o initramfs existe (rebuild explícito de segurança) ──────────
 # ── Atalho do instalador no desktop do live ───────────────────────────────────
 mkdir -p /home/velaris/Desktop
 cp /usr/share/applications/calamares.desktop /home/velaris/Desktop/
@@ -90,10 +98,13 @@ chown -R velaris:velaris /home/velaris/.config
 gtk-update-icon-cache -f /usr/share/icons/velaris 2>/dev/null || true
 gtk-update-icon-cache -f /usr/share/icons/hicolor 2>/dev/null || true
 
+# ── Garante que o initramfs live contém o tema Plymouth padrão ───────────────
 mkinitcpio -P 2>&1 || echo "[Velaris] AVISO: mkinitcpio -P falhou, verifique MODULES/HOOKS"
 
 # ── Limpeza ───────────────────────────────────────────────────────────────────
-pacman -Scc --noconfirm 2>/dev/null || true
+# Limpa somente pacotes baixados. `pacman -Scc` também remove os bancos de
+# sincronização e fazia o primeiro `pacman -S pacote` dizer que core/extra não
+# existiam.
 rm -rf /var/cache/pacman/pkg/* /tmp/*
 
 echo "[Velaris] Concluído ✓"
