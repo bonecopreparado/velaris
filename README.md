@@ -3,7 +3,7 @@
 
   <h1>Velaris</h1>
 
-  <p><strong>Arch Linux refinado para desempenho, estabilidade e uma experiência KDE Plasma limpa.</strong></p>
+  <p><strong>Arch Linux refined for performance, stability, and a clean KDE Plasma experience.</strong></p>
 
   <p>
     <a href="https://github.com/Caeluum/velaris/releases">Downloads</a>
@@ -34,74 +34,74 @@
 </p>
 
 > [!IMPORTANT]
-> Velaris está em desenvolvimento ativo. As imagens disponíveis atualmente são versões **Beta**: faça backup dos seus dados e teste a instalação em uma máquina virtual ou equipamento secundário antes de usar em produção.
+> Velaris is under active development. All currently available images are **Beta** releases. Back up your data and test the installer in a virtual machine or on secondary hardware before using it on a production system.
 
-## Sobre o Velaris
+## About Velaris
 
-**Velaris** é uma distribuição Linux baseada em Arch criada pela [Caelum](https://github.com/Caeluum). O projeto combina o kernel CachyOS, KDE Plasma 6 e uma seleção cuidadosamente configurada de componentes para entregar um desktop rápido, responsivo e previsível.
+**Velaris** is an Arch-based Linux distribution created by [Caelum](https://github.com/Caeluum). It combines the CachyOS kernel, KDE Plasma 6, and a carefully configured software selection to provide a fast, responsive, and predictable desktop.
 
-O objetivo não é aplicar ajustes agressivos sem medição. Cada decisão deve preservar compatibilidade, segurança e estabilidade, especialmente em máquinas com pouca memória ou armazenamento mais lento.
+The project does not rely on unmeasured, aggressive tweaks. Every decision should preserve compatibility, security, and stability, especially on systems with limited memory or slower storage.
 
-## Pilares do projeto
+## Project pillars
 
-| | Pilar | Objetivo |
+| | Pillar | Goal |
 |---|---|---|
-| ⚡ | **Desempenho equilibrado** | Melhorar resposta do sistema, gerenciamento de memória e cargas interativas sem sacrificar estabilidade. |
-| 🛡️ | **Base confiável** | Manter configurações conservadoras, firewall disponível e proteção contra falta de memória. |
-| ✨ | **Plasma limpo** | Oferecer KDE Plasma 6 organizado, moderno e sem serviços ou aplicativos desnecessários. |
-| 🧩 | **Compatibilidade** | Suportar hardware AMD e Intel, múltiplos sistemas de arquivos, PipeWire e ferramentas de instalação conhecidas. |
-| 🔧 | **Projeto aberto** | Manter perfil, scripts de build e decisões técnicas visíveis para revisão e contribuição. |
+| ⚡ | **Balanced performance** | Improve responsiveness, memory management, and interactive workloads without sacrificing stability. |
+| 🛡️ | **Reliable foundation** | Use conservative defaults, an available firewall, and protection against memory exhaustion. |
+| ✨ | **Clean Plasma desktop** | Deliver an organized and modern KDE Plasma 6 environment without unnecessary applications or services. |
+| 🧩 | **Compatibility** | Support AMD and Intel hardware, multiple file systems, PipeWire, and familiar installation tools. |
+| 🔧 | **Open development** | Keep the system profile, build scripts, and technical decisions available for review and contribution. |
 
-## Stack principal
+## Core stack
 
-| Componente | Tecnologia |
+| Component | Technology |
 |---|---|
 | Base | Arch Linux |
 | Kernel | `linux-cachyos` |
 | Desktop | KDE Plasma 6 |
-| Gerenciador de sessão | SDDM |
-| Áudio | PipeWire + WirePlumber |
-| Rede | NetworkManager |
-| Inicialização | systemd |
-| Bootloader | GRUB com suporte UEFI e BIOS legado |
-| Instalador | Calamares |
-| Sistema de arquivos padrão | Btrfs, com alternativas Ext4 e XFS |
+| Display manager | SDDM |
+| Audio | PipeWire + WirePlumber |
+| Networking | NetworkManager |
+| Init system | systemd |
+| Bootloader | GRUB with UEFI and legacy BIOS support |
+| Installer | Calamares |
+| Default file system | Btrfs, with Ext4 and XFS available |
 
-## Recursos
+## Features
 
-- Kernel CachyOS voltado a cargas interativas e boa responsividade.
-- ZRAM para reduzir o impacto da pressão de memória.
-- Ananicy C++, `irqbalance`, GameMode e `earlyoom` integrados ao perfil.
-- KDE Plasma 6 com animações e efeitos ajustados para uma experiência mais direta.
-- PipeWire para áudio, vídeo e compatibilidade com aplicações modernas.
-- Suporte a Btrfs, Ext4, XFS, NTFS, exFAT, LUKS e LVM.
-- Sessão live com Calamares para uma instalação gráfica simples.
-- Build automatizado e reprodução local com ArchISO.
+- CachyOS kernel focused on interactive workloads and desktop responsiveness.
+- ZRAM to reduce the impact of memory pressure.
+- Ananicy C++, `irqbalance`, GameMode, and `earlyoom` integrated into the profile.
+- KDE Plasma 6 with animations and effects adjusted for a more direct experience.
+- PipeWire for audio, video, and compatibility with modern applications.
+- Support for Btrfs, Ext4, XFS, NTFS, exFAT, LUKS, and LVM.
+- Live environment with Calamares for a straightforward graphical installation.
+- Automated builds and reproducible local builds with ArchISO.
 
 ## Download
 
-As imagens publicadas ficam na página de [Releases](https://github.com/Caeluum/velaris/releases). Quando houver um arquivo de checksum junto da ISO, valide o download antes de criar o pendrive:
+Published images are available on the [Releases](https://github.com/Caeluum/velaris/releases) page. When a checksum file is provided with an ISO, verify the download before writing it to a USB drive:
 
 ```bash
 sha256sum -c velaris-*.iso.sha256
 ```
 
 > [!WARNING]
-> Não baixe ISOs do Velaris publicadas por contas ou sites não vinculados à organização Caelum.
+> Do not download Velaris images published by accounts or websites that are not linked to the Caelum organization.
 
-## Instalação
+## Installation
 
-1. Baixe a ISO mais recente e seu checksum.
-2. Grave a imagem em um pendrive usando uma ferramenta confiável.
-3. Inicie o computador pelo pendrive em modo UEFI ou BIOS legado.
-4. Teste rede, áudio, vídeo e armazenamento na sessão live.
-5. Abra o Calamares e revise cuidadosamente o particionamento antes de confirmar.
+1. Download the latest ISO and its checksum.
+2. Write the image to a USB drive with a trusted imaging tool.
+3. Boot the computer from the USB drive in UEFI or legacy BIOS mode.
+4. Test networking, audio, graphics, and storage from the live environment.
+5. Open Calamares and carefully review the partition layout before confirming the installation.
 
-Como o instalador ainda está sendo estabilizado, mantenha um backup atualizado dos arquivos importantes.
+The installer is still being stabilized, so always keep an up-to-date backup of important files.
 
-## Compilar o projeto
+## Build the project
 
-### Arch Linux, CachyOS ou Codespaces
+### Arch Linux, CachyOS, or Codespaces
 
 ```bash
 git clone https://github.com/Caeluum/velaris.git
@@ -109,7 +109,7 @@ cd velaris
 sudo ./build.sh
 ```
 
-A ISO e o checksum SHA-256 serão gravados no diretório `out/`.
+The ISO and its SHA-256 checksum will be written to the `out/` directory.
 
 ### Docker
 
@@ -123,58 +123,58 @@ docker run --rm --privileged \
 ```
 
 > [!NOTE]
-> O ArchISO precisa montar sistemas de arquivos durante o build. Por isso, a execução em contêiner utiliza o modo privilegiado.
+> ArchISO must mount file systems during the build process. For that reason, the container runs in privileged mode.
 
 ## Branches
 
-| Branch | Finalidade |
+| Branch | Purpose |
 |---|---|
-| [`main`](https://github.com/Caeluum/velaris/tree/main) | Base pública principal do projeto. |
-| [`agent/velaris-stability-lenovo-runner`](https://github.com/Caeluum/velaris/tree/agent/velaris-stability-lenovo-runner) | Revisão de estabilidade, Calamares, validação e build no runner `lenovo-server`. |
+| [`main`](https://github.com/Caeluum/velaris/tree/main) | Main public project baseline. |
+| [`agent/velaris-stability-lenovo-runner`](https://github.com/Caeluum/velaris/tree/agent/velaris-stability-lenovo-runner) | Stability, Calamares, validation, and `lenovo-server` runner work. |
 
-## Estrutura do repositório
+## Repository structure
 
 ```text
 velaris/
-├── .devcontainer/       # Ambiente de desenvolvimento e build em contêiner
-├── .github/workflows/   # Automação do GitHub Actions
-├── assets/              # Identidade visual usada na documentação
-├── profile/             # Perfil ArchISO e sistema live
-│   ├── airootfs/        # Arquivos inseridos no sistema raiz
-│   ├── efiboot/         # Inicialização UEFI
-│   ├── grub/            # Inicialização GRUB e BIOS legado
-│   ├── packages.x86_64  # Pacotes incluídos na imagem
-│   ├── pacman.conf      # Repositórios usados durante o build
-│   └── profiledef.sh    # Definição principal do ArchISO
-└── build.sh             # Entrada principal do build
+├── .devcontainer/       # Container-based development and build environment
+├── .github/workflows/   # GitHub Actions automation
+├── assets/              # Visual identity used by the documentation
+├── profile/             # ArchISO and live system profile
+│   ├── airootfs/        # Files copied into the root file system
+│   ├── efiboot/         # UEFI boot configuration
+│   ├── grub/            # GRUB and legacy BIOS configuration
+│   ├── packages.x86_64  # Packages included in the image
+│   ├── pacman.conf      # Repositories used during the build
+│   └── profiledef.sh    # Main ArchISO profile definition
+└── build.sh             # Main build entry point
 ```
 
-Branches de desenvolvimento também podem conter documentação e validadores adicionais antes da integração à `main`.
+Development branches may also contain additional documentation and validators before they are integrated into `main`.
 
 ## Roadmap
 
-- Estabilizar completamente o Calamares e os cenários de particionamento.
-- Medir boot, memória ociosa, responsividade e tamanho da instalação.
-- Separar com mais precisão os pacotes da sessão live e do sistema instalado.
-- Revisar serviços do Plasma com perfis seguros e reversíveis.
-- Aprimorar os testes de hardware, VM, UEFI, BIOS e criptografia.
-- Preparar a primeira versão estável oficial do Velaris.
+- Fully stabilize Calamares and its partitioning scenarios.
+- Measure boot time, idle memory usage, responsiveness, and installed size.
+- Improve the separation between live-session and installed-system packages.
+- Review Plasma services through safe and reversible profiles.
+- Expand hardware, virtual machine, UEFI, legacy BIOS, and encryption testing.
+- Prepare the first official stable Velaris release.
 
-## Contribuindo
+## Contributing
 
-Relatórios e contribuições são bem-vindos:
+Bug reports and contributions are welcome:
 
-1. Verifique os [issues existentes](https://github.com/Caeluum/velaris/issues).
-2. Abra um issue com logs, hardware utilizado e passos para reproduzir o problema.
-3. Para código, crie uma branch no seu fork e envie um pull request com uma mudança focada.
-4. Evite incluir chaves, tokens, senhas, imagens pessoais ou outros dados privados nos logs.
+1. Check the [existing issues](https://github.com/Caeluum/velaris/issues).
+2. Open an issue with relevant logs, hardware information, and clear reproduction steps.
+3. For code changes, create a focused branch in your fork and submit a pull request.
+4. Never include keys, tokens, passwords, personal images, or other private data in logs.
 
-## Créditos
+## Credits
 
-Velaris é desenvolvido pela **Caelum** e construído sobre o trabalho das comunidades [Arch Linux](https://archlinux.org/), [CachyOS](https://cachyos.org/), [KDE](https://kde.org/) e [Calamares](https://calamares.io/).
+Velaris is developed by **Caelum** and built upon the work of the [Arch Linux](https://archlinux.org/), [CachyOS](https://cachyos.org/), [KDE](https://kde.org/), and [Calamares](https://calamares.io/) communities.
 
-Este projeto é independente e não representa oficialmente os projetos upstream citados.
+This is an independent project and is not officially endorsed by the upstream projects listed above.
 
 <div align="center">
-  <sub>Built by <a href="https://github.com/Caeluum">Caelum</a> · Performance, stability and freedom.</sub>
+  <sub>Built by <a href="https://github.com/Caeluum">Caelum</a> · Performance, stability, and freedom.</sub>
 </div>

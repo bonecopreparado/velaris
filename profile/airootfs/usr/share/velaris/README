@@ -1,1 +1,17 @@
-# Imagens da Velaris — serão adicionadas
+# Velaris
+
+Velaris is an Arch-based Linux distribution featuring KDE Plasma and the
+CachyOS kernel. The project focuses on balanced performance, stability, and a
+clean desktop experience.
+
+Project: https://github.com/Caeluum/velaris
+Downloads: https://github.com/Caeluum/velaris/releases
+Support: https://github.com/Caeluum/velaris/issues
+
+Velaris is currently in Beta. Back up important files before installation and
+carefully review the partition layout shown by Calamares before confirming any
+changes.
+
+KDE Plasma on Wayland is the primary desktop session. Development builds may
+also provide a Plasma X11 session for applications or drivers that require
+additional compatibility.
