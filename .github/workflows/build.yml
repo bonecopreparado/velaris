@@ -2,7 +2,7 @@ name: Build Velaris ISO
 
 on:
   push:
-    branches: [main, agent/velaris-stability-lenovo-runner]
+    branches: [main]
     paths:
       - 'profile/**'
       - 'scripts/**'
