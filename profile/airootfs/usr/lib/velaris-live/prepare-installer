@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+config_dir="/etc/calamares/modules"
+asset_dir="/usr/share/velaris/calamares"
+kernel_config="${config_dir}/packagechooser_kernel.conf"
+graphics_config="${config_dir}/packagechooser_graphics.conf"
+
+supports_v3=false
+if /usr/lib/ld-linux-x86-64.so.2 --help 2>/dev/null | grep -q 'x86-64-v3 (supported'; then
+    supports_v3=true
+fi
+
+if [[ "${supports_v3}" == true ]]; then
+    install -m 0644 "${asset_dir}/kernel-v3.conf" "${kernel_config}"
+else
+    install -m 0644 "${asset_dir}/kernel-compat.conf" "${kernel_config}"
+fi
+
+gpu_choice="universal"
+gpu_label="Universal open-source fallback"
+gpu_lines="$(lspci -Dn 2>/dev/null | grep -Ei ' (0300|0302):' || true)"
+
+nvidia_device="$(sed -nE 's/.* (0300|0302): 10de:([0-9a-fA-F]{4}).*/\2/p' <<<"${gpu_lines}" | head -n1)"
+if [[ -n "${nvidia_device}" ]]; then
+    if (( 16#${nvidia_device,,} >= 16#1e00 )); then
+        gpu_choice="nvidia-open"
+        gpu_label="NVIDIA Turing or newer — NVIDIA Open"
+    else
+        gpu_choice="nouveau"
+        gpu_label="Pre-Turing NVIDIA — Nouveau"
+    fi
+elif grep -Eqi ' (0300|0302): 1002:' <<<"${gpu_lines}"; then
+    gpu_choice="amd"
+    gpu_label="AMD — Mesa and AMDGPU"
+elif grep -Eqi ' (0300|0302): 8086:' <<<"${gpu_lines}"; then
+    gpu_choice="intel"
+    gpu_label="Intel — Mesa and ANV"
+else
+    virtualization="$(systemd-detect-virt 2>/dev/null || true)"
+    if [[ -n "${virtualization}" && "${virtualization}" != "none" ]]; then
+        gpu_choice="virtual"
+        gpu_label="Virtual machine (${virtualization})"
+    fi
+fi
+
+sed -i -E "s/^default: .*/default: ${gpu_choice}/" "${graphics_config}"
+
+install -d -m 0755 /run/velaris
+{
+    printf 'cpu_x86_64_v3=%s\n' "${supports_v3}"
+    printf 'graphics=%s\n' "${gpu_choice}"
+    printf 'graphics_label=%s\n' "${gpu_label}"
+} > /run/velaris/hardware-detection
+
+logger -t velaris-installer "CPU v3=${supports_v3}; graphics=${gpu_choice} (${gpu_label})"

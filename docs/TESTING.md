@@ -1,100 +1,123 @@
-# Checklist de teste da ISO Velaris
+# Velaris ISO test checklist
 
-Use sempre uma máquina virtual com **disco virtual vazio**. Não aponte o instalador de teste para um disco que contenha arquivos importantes.
+Use a virtual machine with an empty virtual disk for routine tests. Use only disposable hardware or a complete verified backup for alongside/resize tests.
 
-## 1. Preparar a VM
+## 1. Prepare the VM
 
-Configuração mínima recomendada para o teste:
+Recommended baseline:
 
-- firmware UEFI;
+- UEFI firmware;
 - 2 vCPUs;
-- 4 GiB de RAM;
-- disco virtual de 30 GiB ou maior;
-- rede habilitada;
-- controladora gráfica padrão da VM, sem arquivo Xorg forçado.
+- 4 GiB RAM;
+- a 40 GiB or larger virtual disk;
+- networking enabled;
+- the hypervisor's default accelerated virtual GPU.
 
-Faça também uma rodada com 2 GiB de RAM para observar ZRAM e `earlyoom` sob pressão.
+Run an additional 2 GiB test for ZRAM and memory-pressure behavior. Test VMware, VirtualBox, and QEMU/KVM separately when possible.
 
-## 2. Conferir a sessão live
+## 2. Check the live session
 
-1. Confirme o autologin do usuário `velaris`.
-2. Abra o Calamares pelo ícone e pelo autostart.
-3. Confirme que o instalador não abre em branco e que logo, textos e slideshow aparecem.
-4. Teste rede, áudio, resolução da tela e bloqueio de sessão.
-5. No terminal, confirme que a renderização por software não foi forçada:
+1. Confirm automatic login as `velaris`.
+2. Confirm the desktop uses the display's preferred resolution.
+3. Open Calamares from both the desktop launcher and autostart.
+4. Confirm the installer starts in English, fits the screen, and shows the horizontal welcome artwork.
+5. Open the language selector, scroll through the list, and choose a non-English locale once.
+6. Confirm **Velaris support** opens the issue form and **Known issues** opens `KNOWN_ISSUES.md` in Firefox.
+7. Test networking, audio, screen lock, and browser rendering.
 
-   ```bash
-   printenv LIBGL_ALWAYS_SOFTWARE
-   ```
+On NVIDIA hardware, also inspect `/run/velaris/live-graphics` and `lsmod`. Turing or newer hardware should use NVIDIA Open; older hardware should use Nouveau. The initramfs policy must not exist in the installed system after Calamares finishes.
 
-   O resultado esperado é vazio.
+`printenv LIBGL_ALWAYS_SOFTWARE` must return no value.
 
-## 3. Instalar
+## 3. Check automatic recommendations
 
-1. Escolha um nome de usuário diferente de `velaris`.
-2. Teste primeiro o particionamento automático em um disco virtual vazio.
-3. Em uma segunda VM, teste o particionamento manual.
-4. Se houver opção de criptografia, faça uma rodada separada com LUKS.
-5. Conclua a instalação e reinicie sem a mídia ISO conectada.
+On every machine, record `/run/velaris/hardware-detection` and compare it with the selected graphics option.
 
-## 4. Validar o sistema instalado
+| Hardware | Expected graphics default |
+|---|---|
+| NVIDIA Turing or newer | NVIDIA Open |
+| NVIDIA older than Turing | Nouveau |
+| AMD GPU without NVIDIA | AMD Mesa + AMDGPU |
+| Intel GPU without AMD/NVIDIA | Intel Mesa + ANV |
+| VM with no identified physical GPU | Virtual machine |
+| Unknown hardware | Universal open-source fallback |
 
-Execute os comandos abaixo com o usuário criado no Calamares.
+The BORE+LTO kernel must appear and be selected only when the loader reports `x86-64-v3 (supported)`. Otherwise, regular CachyOS must be the first and default choice.
 
-### Identidade live removida
+## 4. Installation matrix
+
+At minimum, test:
+
+1. regular CachyOS + detected graphics + Balanced on an empty Btrfs disk;
+2. CachyOS LTS + Universal + Power saver on Ext4;
+3. Arch kernel + detected graphics on an empty disk;
+4. BORE+LTO + Performance on confirmed x86-64-v3 hardware;
+5. manual partitioning with a separate home partition;
+6. LUKS encryption in a separate run;
+7. alongside/resize on a disposable Windows installation after disabling Fast Startup and suspending BitLocker.
+
+Never proceed if the partition summary does not exactly match the intended target disk and resize boundary.
+
+## 5. Validate the installed system
+
+### Live identity removed
 
 ```bash
 getent passwd velaris
 test ! -e /home/velaris
 test ! -e /etc/sddm.conf.d/autologin.conf
-test ! -e ~/.config/autostart/calamares.desktop
-test ! -e /usr/share/applications/calamares.desktop
+test ! -e /usr/bin/velaris-calamares
+test ! -e /usr/lib/velaris-live
+test ! -e /usr/lib/udev/rules.d/00-velaris-gpu-policy.rules
+test ! -e /etc/polkit-1/rules.d/49-calamares.rules
 ```
 
-`getent` não deve imprimir nada e os comandos `test` devem terminar sem saída.
+All commands must produce no output and return the expected success state.
 
-### Privilégios e instalador
+### Kernel and graphics choice
 
 ```bash
-sudo -n true
-pacman -Q cachyos-calamares mkinitcpio-archiso syslinux
+cat /etc/velaris/kernel-choice
+cat /etc/velaris/graphics-choice
+uname -r
+pacman -Q | grep -E '^(linux|nvidia)'
 ```
 
-O primeiro comando deve recusar sudo sem senha. O segundo deve informar que os três pacotes exclusivos do live não estão instalados. Depois, confirme que `sudo true` funciona usando a senha do usuário.
+Only the selected kernel should remain. Kernel headers are intentionally installed on demand rather than carried by every desktop. NVIDIA Open installations must contain exactly one matching NVIDIA kernel-module package; non-NVIDIA installations must not retain NVIDIA userspace packages.
 
-### Serviços e boot
+### Services and boot
 
 ```bash
 systemctl --failed --no-pager
-systemctl is-enabled NetworkManager.service sddm.service ananicy-cpp.service ufw.service cups.socket paccache.timer
-systemctl is-enabled NetworkManager-wait-online.service cups.service systemd-oomd.service
+systemctl is-enabled NetworkManager.service sddm.service ananicy-cpp.service ufw.service
+systemctl is-enabled cups.socket fstrim.timer paccache.timer velaris-performance-profile.service
+systemctl is-enabled NetworkManager-wait-online.service cups.service bluetooth.service systemd-oomd.service
 plymouth-set-default-theme
-test ! -e /var/lib/velaris/firstboot-plymouth
 ```
 
-Resultados esperados:
+Expected results:
 
-- nenhuma unidade em estado `failed`;
-- os serviços principais, `cups.socket` e `paccache.timer` habilitados;
-- `NetworkManager-wait-online` e `cups.service` desabilitados, com `systemd-oomd` mascarado;
-- tema Plymouth igual a `velaris`;
-- marcador do primeiro boot removido.
+- no failed units;
+- core services and timers enabled;
+- NetworkManager wait-online, CUPS daemon, and Bluetooth not unconditionally enabled;
+- `systemd-oomd` masked;
+- Plymouth theme set to `velaris` after the first-boot service completes.
 
-Reinicie uma segunda vez para garantir que o initramfs restaurado inicia normalmente.
+Reboot a second time to verify the rebuilt initramfs.
 
-### Memória e desempenho
+### Memory, storage, and power profile
 
 ```bash
 swapon --show
 sysctl vm.swappiness vm.page-cluster vm.dirty_bytes vm.dirty_background_bytes
-systemctl status ananicy-cpp.service earlyoom.service --no-pager
 cat /sys/module/zswap/parameters/enabled
 findmnt -no OPTIONS /
+powerprofilesctl get
 ```
 
-Confirme a presença de ZRAM, `swappiness = 100`, `page-cluster = 0`, zswap igual a `N`, `compress=zstd:1` no Btrfs e os dois serviços sem falhas.
+Confirm ZRAM, `swappiness = 100`, `page-cluster = 0`, zswap `N`, and `noatime,compress=zstd:1` on Btrfs. The active power profile must match the installer choice when the platform supports it.
 
-### Idioma e shell
+### Locale and Plasma sessions
 
 ```bash
 locale
@@ -102,23 +125,17 @@ localectl status
 getent passwd "$USER" | cut -d: -f7
 ```
 
-Na sessão live, o padrão deve ser `en_US.UTF-8`, teclado US, UTC e Fish em `/usr/bin/fish`. O usuário instalado deve manter o idioma, teclado e fuso escolhidos no Calamares, mas continuar usando Fish.
+The installed locale, keyboard, and timezone must match Calamares, while Fish remains the default shell. Test both Plasma Wayland and Plasma X11 and confirm hardware acceleration is not globally disabled.
 
-### KDE e gráficos
+## 6. Failure report data
 
-1. Entre na sessão Plasma Wayland e confirme painel, bloqueio, suspensão, áudio e navegador.
-2. Saia da sessão, selecione Plasma X11 no SDDM e entre novamente.
-3. Confirme que `printenv LIBGL_ALWAYS_SOFTWARE` continua vazio nas duas sessões.
-4. Se possível, repita em uma VM diferente para cobrir outro driver virtual.
-
-## 5. Informações para um relatório de falha
-
-Anexe ao issue:
+Attach sanitized output from:
 
 ```bash
 fastfetch
 systemctl --failed --no-pager
 journalctl -b -p warning..alert --no-pager
+cat /etc/velaris/kernel-choice /etc/velaris/graphics-choice /etc/velaris/performance-profile
 ```
 
-Para falhas do instalador, copie também `/root/.cache/calamares/session.log` ainda na sessão live, antes de reiniciar.
+For installer failures, copy `/root/.cache/calamares/session.log` before rebooting. Remove passwords, tokens, serial numbers, recovery keys, usernames, and personal paths before publishing logs.

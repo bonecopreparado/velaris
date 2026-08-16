@@ -1,0 +1,12 @@
+[Unit]
+Description=Apply the Velaris power profile
+After=power-profiles-daemon.service
+ConditionPathExists=!/run/archiso/bootmnt
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/velaris/apply-runtime-profile
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

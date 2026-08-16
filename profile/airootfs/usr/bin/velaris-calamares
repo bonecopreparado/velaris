@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Set the preferred X11 mode before opening the installer so Calamares never
+# inherits the tiny fallback resolution used by some firmware and VMs.
+/usr/lib/velaris-live/display-setup || true
+
+live_uid="$(id -u)"
+runtime_dir="${XDG_RUNTIME_DIR:-/run/user/${live_uid}}"
+bus_address="${DBUS_SESSION_BUS_ADDRESS:-unix:path=${runtime_dir}/bus}"
+
+exec /usr/bin/pkexec /usr/lib/velaris-live/calamares-root \
+    "${DISPLAY:-:0}" \
+    "${XAUTHORITY:-}" \
+    "${runtime_dir}" \
+    "${bus_address}"

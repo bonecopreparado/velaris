@@ -1,0 +1,52 @@
+QWidget {
+    font-family: "Noto Sans";
+    font-size: 10pt;
+}
+
+QPushButton {
+    min-height: 34px;
+    min-width: 92px;
+    padding: 4px 14px;
+    border-radius: 7px;
+}
+
+QComboBox {
+    min-height: 34px;
+    padding: 3px 10px;
+    border-radius: 6px;
+    combobox-popup: 0;
+}
+
+QComboBox#languageWidget {
+    min-height: 40px;
+    font-size: 11pt;
+}
+
+QComboBox#languageWidget QAbstractItemView {
+    min-height: 380px;
+    min-width: 540px;
+    padding: 6px;
+    outline: 0;
+}
+
+QAbstractItemView::item {
+    min-height: 30px;
+    padding: 4px 8px;
+}
+
+QListView, QTreeView {
+    border-radius: 8px;
+    padding: 4px;
+}
+
+QGroupBox {
+    margin-top: 12px;
+    padding-top: 12px;
+    font-weight: 600;
+}
+
+QProgressBar {
+    min-height: 18px;
+    border-radius: 7px;
+    text-align: center;
+}

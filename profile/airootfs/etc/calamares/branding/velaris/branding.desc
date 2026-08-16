@@ -3,6 +3,8 @@ componentName: velaris
 
 welcomeStyleCalamares: true
 welcomeExpandingLogo: false
+windowSize: 1000px,680px
+windowPlacement: center
 
 strings:
   productName: Velaris
@@ -13,20 +15,20 @@ strings:
   shortVersionedName: "Velaris"
   bootloaderEntryName: Velaris
   productUrl: "https://github.com/Caeluum/velaris"
-  supportUrl: "https://github.com/Caeluum/velaris/issues"
-  knownIssuesUrl: "https://github.com/Caeluum/velaris/issues"
+  supportUrl: "https://github.com/Caeluum/velaris/issues/new/choose"
+  knownIssuesUrl: "https://github.com/Caeluum/velaris/blob/main/KNOWN_ISSUES.md"
   releaseNotesUrl: "https://github.com/Caeluum/velaris/releases"
 
 images:
   productLogo: "logo.png"
   productIcon: "logo.png"
-  productWelcome: "logo.png"
+  productWelcome: "welcome.svg"
 
 slideshow: "show.qml"
 slideshowAPI: 2
 
 style:
-  sidebarBackground: "#0d1b2a"
+  sidebarBackground: "#0b1730"
   sidebarText: "#FFFFFF"
-  sidebarTextSelect: "#4a9eff"
-  sidebarTextHighlight: "#4a9eff"
+  sidebarTextSelect: "#7db8ff"
+  sidebarTextHighlight: "#58a6ff"

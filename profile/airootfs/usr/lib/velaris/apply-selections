@@ -1,0 +1,185 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+selection_dir="/etc/velaris/installer"
+kernel_choice="$(<"${selection_dir}/kernel")"
+graphics_choice="$(<"${selection_dir}/graphics")"
+profile_choice="$(<"${selection_dir}/profile")"
+
+# The live-only initramfs policy must never leak into the installed initramfs.
+# Reset it before package removals can trigger mkinitcpio hooks.
+sed -i -E 's|^FILES=.*|FILES=()|' /etc/mkinitcpio.conf
+rm -f /usr/lib/udev/rules.d/00-velaris-gpu-policy.rules
+
+case "${kernel_choice}" in
+    bore-lto)
+        selected_kernel="linux-cachyos-bore-lto"
+        selected_boot_suffix="linux-cachyos-bore-lto"
+        selected_nvidia="linux-cachyos-bore-lto-nvidia-open"
+        if ! /usr/lib/ld-linux-x86-64.so.2 --help 2>/dev/null | grep -q 'x86-64-v3 (supported'; then
+            printf 'BORE + LTO requires an x86-64-v3 capable CPU.\n' >&2
+            exit 65
+        fi
+        sed -i \
+            -e 's/^#\[cachyos-v3\]/[cachyos-v3]/' \
+            -e 's|^#Include = /etc/pacman.d/cachyos-v3-mirrorlist|Include = /etc/pacman.d/cachyos-v3-mirrorlist|' \
+            /etc/pacman.conf
+        ;;
+    cachyos)
+        selected_kernel="linux-cachyos"
+        selected_boot_suffix="linux-cachyos"
+        selected_nvidia="linux-cachyos-nvidia-open"
+        ;;
+    lts)
+        selected_kernel="linux-cachyos-lts"
+        selected_boot_suffix="linux-cachyos-lts"
+        selected_nvidia="linux-cachyos-lts-nvidia-open"
+        ;;
+    arch)
+        selected_kernel="linux"
+        selected_boot_suffix="linux"
+        selected_nvidia="nvidia-open"
+        ;;
+    *) exit 64 ;;
+esac
+
+case "${graphics_choice}" in
+    nvidia-open|nouveau|amd|intel|virtual|universal) ;;
+    *) exit 64 ;;
+esac
+case "${profile_choice}" in
+    balanced|performance|powersave) ;;
+    *) exit 64 ;;
+esac
+
+kernel_packages=(
+    linux-cachyos-bore-lto
+    linux-cachyos
+    linux-cachyos-lts
+    linux
+)
+nvidia_modules=(
+    linux-cachyos-bore-lto-nvidia-open
+    linux-cachyos-nvidia-open
+    linux-cachyos-lts-nvidia-open
+    nvidia-open
+)
+nvidia_userspace=(nvidia-utils lib32-nvidia-utils nvidia-settings nvidia-prime)
+vm_packages=(open-vm-tools virtualbox-guest-utils qemu-guest-agent spice-vdagent)
+remove_candidates=()
+
+if [[ "${kernel_choice}" != "bore-lto" ]]; then
+    remove_candidates+=(cachyos-v3-mirrorlist)
+fi
+
+for package in "${kernel_packages[@]}"; do
+    if [[ "${package}" != "${selected_kernel}" ]]; then
+        remove_candidates+=("${package}")
+    fi
+done
+
+for package in "${nvidia_modules[@]}"; do
+    if [[ "${graphics_choice}" != "nvidia-open" || "${package}" != "${selected_nvidia}" ]]; then
+        remove_candidates+=("${package}")
+    fi
+done
+
+if [[ "${graphics_choice}" != "nvidia-open" ]]; then
+    remove_candidates+=("${nvidia_userspace[@]}")
+fi
+
+virtualization="none"
+if [[ "${graphics_choice}" == "virtual" ]]; then
+    virtualization="$(systemd-detect-virt 2>/dev/null || true)"
+    case "${virtualization}" in
+        vmware) remove_candidates+=(virtualbox-guest-utils qemu-guest-agent spice-vdagent) ;;
+        oracle) remove_candidates+=(open-vm-tools qemu-guest-agent spice-vdagent) ;;
+        kvm|qemu) remove_candidates+=(open-vm-tools virtualbox-guest-utils) ;;
+        *) ;;
+    esac
+else
+    remove_candidates+=("${vm_packages[@]}")
+fi
+
+installed_remove=()
+for package in "${remove_candidates[@]}"; do
+    if pacman -Qq "${package}" >/dev/null 2>&1; then
+        installed_remove+=("${package}")
+    fi
+done
+if (( ${#installed_remove[@]} )); then
+    pacman -Rns --noconfirm -- "${installed_remove[@]}"
+fi
+if [[ "${kernel_choice}" != "bore-lto" ]]; then
+    sed -i -E 's|^Architecture =.*|Architecture = x86_64|' /etc/pacman.conf
+fi
+
+# Archiso may move the booted kernel out of the SquashFS. Recreate the image
+# for whichever kernel the user selected from the package-owned module copy.
+selected_kernel_image=""
+for module_dir in /usr/lib/modules/*; do
+    [[ -d "${module_dir}" && -r "${module_dir}/pkgbase" && -r "${module_dir}/vmlinuz" ]] || continue
+    if [[ "$(<"${module_dir}/pkgbase")" == "${selected_kernel}" ]]; then
+        selected_kernel_image="${module_dir}/vmlinuz"
+        break
+    fi
+done
+if [[ -n "${selected_kernel_image}" ]]; then
+    install -d -m 0755 /boot
+    install -m 0644 "${selected_kernel_image}" "/boot/vmlinuz-${selected_boot_suffix}"
+fi
+if [[ ! -s "/boot/vmlinuz-${selected_boot_suffix}" ]]; then
+    printf 'The selected kernel image could not be prepared: %s\n' "${selected_kernel}" >&2
+    exit 66
+fi
+
+for boot_suffix in linux-cachyos-bore-lto linux-cachyos linux-cachyos-lts linux; do
+    if [[ "${boot_suffix}" != "${selected_boot_suffix}" ]]; then
+        rm -f "/boot/vmlinuz-${boot_suffix}" \
+            "/boot/initramfs-${boot_suffix}.img" \
+            "/boot/initramfs-${boot_suffix}-fallback.img"
+    fi
+done
+
+rm -f /etc/modprobe.d/90-velaris-nvidia.conf \
+    /etc/mkinitcpio.conf.d/90-velaris-nvidia.conf
+if [[ "${graphics_choice}" == "nvidia-open" ]]; then
+    install -d -m 0755 /etc/modprobe.d /etc/mkinitcpio.conf.d
+    printf '%s\n' \
+        'blacklist nouveau' \
+        'options nvidia_drm modeset=1 fbdev=1' \
+        > /etc/modprobe.d/90-velaris-nvidia.conf
+    printf '%s\n' \
+        'MODULES+=(nvidia nvidia_modeset nvidia_uvm nvidia_drm)' \
+        > /etc/mkinitcpio.conf.d/90-velaris-nvidia.conf
+fi
+
+enable_if_present() {
+    local unit="$1"
+    if [[ -e "/usr/lib/systemd/system/${unit}" ]]; then
+        systemctl enable "${unit}"
+    fi
+}
+
+if [[ "${graphics_choice}" == "virtual" ]]; then
+    case "${virtualization}" in
+        vmware)
+            enable_if_present vmtoolsd.service
+            enable_if_present vmware-vmblock-fuse.service
+            ;;
+        oracle) enable_if_present vboxservice.service ;;
+        kvm|qemu)
+            enable_if_present qemu-guest-agent.service
+            enable_if_present spice-vdagentd.service
+            ;;
+    esac
+fi
+
+install -d -m 0755 /etc/velaris
+printf '%s\n' "${kernel_choice}" > /etc/velaris/kernel-choice
+printf '%s\n' "${graphics_choice}" > /etc/velaris/graphics-choice
+printf '%s\n' "${profile_choice}" > /etc/velaris/performance-profile
+rm -rf "${selection_dir}"
+
+printf 'Velaris selections applied: kernel=%s graphics=%s profile=%s\n' \
+    "${kernel_choice}" "${graphics_choice}" "${profile_choice}"

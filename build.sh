@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ============================================================
 #  Velaris — Script de Build
-#  Gera a ISO usando archiso + kernel CachyOS BORE+LTO
+#  Builds the ISO with Archiso and the selectable Velaris kernel stack
 # ============================================================
 set -euo pipefail
 

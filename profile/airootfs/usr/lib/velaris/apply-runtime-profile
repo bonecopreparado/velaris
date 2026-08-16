@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+profile="balanced"
+if [[ -r /etc/velaris/performance-profile ]]; then
+    profile="$(</etc/velaris/performance-profile)"
+fi
+
+case "${profile}" in
+    performance) requested="performance" ;;
+    powersave) requested="power-saver" ;;
+    balanced|*) requested="balanced" ;;
+esac
+
+if command -v powerprofilesctl >/dev/null 2>&1; then
+    powerprofilesctl set "${requested}" 2>/dev/null || \
+        powerprofilesctl set balanced 2>/dev/null || true
+fi
+
+exit 0

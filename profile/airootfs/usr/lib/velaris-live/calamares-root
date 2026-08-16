@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+[[ "${EUID}" -eq 0 ]] || exit 77
+
+live_user="velaris"
+live_uid="$(id -u "${live_user}")"
+display="${1:-:0}"
+xauthority="${2:-}"
+runtime_dir="${3:-/run/user/${live_uid}}"
+bus_address="${4:-unix:path=/run/user/${live_uid}/bus}"
+
+[[ "${display}" =~ ^:[0-9]+(\.[0-9]+)?$ ]] || display=":0"
+[[ "${runtime_dir}" == "/run/user/${live_uid}" ]] || runtime_dir="/run/user/${live_uid}"
+[[ "${bus_address}" == "unix:path=${runtime_dir}/bus" ]] || bus_address="unix:path=${runtime_dir}/bus"
+
+if [[ -n "${xauthority}" ]]; then
+    case "${xauthority}" in
+        /home/velaris/*|/run/user/"${live_uid}"/*|/tmp/xauth_*) ;;
+        *) xauthority="" ;;
+    esac
+fi
+if [[ -n "${xauthority}" && ( ! -f "${xauthority}" || "$(stat -c '%u' "${xauthority}" 2>/dev/null || true)" != "${live_uid}" ) ]]; then
+    xauthority=""
+fi
+
+export DISPLAY="${display}"
+export XDG_RUNTIME_DIR="${runtime_dir}"
+export DBUS_SESSION_BUS_ADDRESS="${bus_address}"
+export LANG="en_US.UTF-8"
+export LC_ALL="en_US.UTF-8"
+export QT_STYLE_OVERRIDE="Breeze"
+export PATH="/usr/lib/velaris-live/bin:/usr/local/sbin:/usr/local/bin:/usr/bin"
+if [[ -n "${xauthority}" ]]; then
+    export XAUTHORITY="${xauthority}"
+fi
+
+/usr/lib/velaris-live/prepare-installer
+
+exec /usr/bin/calamares \
+    -style Breeze \
+    -stylesheet /usr/share/velaris/calamares/calamares.qss

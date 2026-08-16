@@ -57,7 +57,7 @@ The project does not rely on unmeasured, aggressive tweaks. Every decision shoul
 | Component | Technology |
 |---|---|
 | Base | Arch Linux |
-| Kernel | `linux-cachyos` |
+| Kernel | CachyOS BORE+LTO, CachyOS, CachyOS LTS, or Arch Linux |
 | Desktop | KDE Plasma 6 |
 | Display manager | SDDM |
 | Audio | PipeWire + WirePlumber |
@@ -70,17 +70,21 @@ The project does not rely on unmeasured, aggressive tweaks. Every decision shoul
 
 ## Features
 
-- CachyOS kernel focused on interactive workloads and desktop responsiveness.
+- Hardware-aware kernel chooser with a CPU compatibility gate for the x86-64-v3 BORE+LTO build.
+- Early live-boot selection between NVIDIA Open and Nouveau, followed by automatic installer recommendations for NVIDIA, AMD, Intel, and virtual machines.
+- Matching offline NVIDIA Open modules for every selectable kernel.
+- Balanced, performance, and power-saver profiles applied through the platform power-profile service.
 - ZRAM to reduce the impact of memory pressure.
 - zswap explicitly disabled to avoid compressing the same memory twice.
 - Ananicy C++, `irqbalance`, GameMode, and `earlyoom` integrated into the profile.
 - Fish with native autosuggestions and syntax highlighting, plus Fastfetch once per login session.
 - CUPS socket activation and scheduled package-cache maintenance.
-- Btrfs Zstd level 1 compression for new Calamares installations.
+- Btrfs `noatime` and Zstd level 1 compression for new Calamares installations.
 - KDE Plasma 6 with animations and effects adjusted for a more direct experience.
 - PipeWire for audio, video, and compatibility with modern applications.
 - Support for Btrfs, Ext4, XFS, NTFS, exFAT, LUKS, and LVM.
-- Live environment with Calamares for a straightforward graphical installation.
+- English-first live environment with native-resolution detection and a redesigned Calamares flow.
+- Automatic, alongside/dual-boot, replace, erase, and manual partitioning paths in Calamares.
 - Automated builds and reproducible local builds with ArchISO.
 
 ## Download
@@ -101,6 +105,10 @@ sha256sum -c velaris-*.iso.sha256
 3. Boot the computer from the USB drive in UEFI or legacy BIOS mode.
 4. Test networking, audio, graphics, and storage from the live environment.
 5. Open Calamares and carefully review the partition layout before confirming the installation.
+
+For a Windows dual boot, disable Windows Fast Startup, suspend BitLocker if it is enabled, and leave unallocated disk space before starting the installer. Calamares will offer **Install alongside** only when it finds a safely resizable existing partition and at least 24 GiB of usable space.
+
+See [Known issues](KNOWN_ISSUES.md) before installing on NVIDIA legacy hardware, virtual machines, or Secure Boot systems.
 
 The installer is still being stabilized, so always keep an up-to-date backup of important files.
 
@@ -158,7 +166,7 @@ Development branches may also contain additional documentation and validators be
 
 ## Roadmap
 
-- Fully stabilize Calamares and its partitioning scenarios.
+- Complete the Calamares hardware and partitioning test matrix.
 - Measure boot time, idle memory usage, responsiveness, and installed size.
 - Improve the separation between live-session and installed-system packages.
 - Review Plasma services through safe and reversible profiles.

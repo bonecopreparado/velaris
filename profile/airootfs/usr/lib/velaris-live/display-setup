@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -u
+
+command -v xrandr >/dev/null 2>&1 || exit 0
+[[ -n "${DISPLAY:-}" ]] || exit 0
+
+for _attempt in {1..20}; do
+    if xrandr --query >/dev/null 2>&1; then
+        # --auto selects the EDID-preferred mode for connected displays while
+        # leaving unsupported or disconnected outputs alone.
+        xrandr --auto >/dev/null 2>&1 || true
+        exit 0
+    fi
+    sleep 0.25
+done
+
+exit 0

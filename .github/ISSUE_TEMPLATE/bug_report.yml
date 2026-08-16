@@ -1,0 +1,52 @@
+name: Velaris bug report
+description: Report an installer, boot, hardware, or desktop problem
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve Velaris. Check the known issues first and remove private information from every log.
+  - type: checkboxes
+    attributes:
+      label: Before submitting
+      options:
+        - label: I checked KNOWN_ISSUES.md and searched existing issues.
+          required: true
+        - label: I backed up important data before testing partitioning.
+          required: true
+        - label: I removed passwords, tokens, serial numbers, recovery keys, and personal files from logs.
+          required: true
+  - type: input
+    attributes:
+      label: ISO or build number
+      placeholder: "Example: GitHub Actions build #61"
+    validations:
+      required: true
+  - type: dropdown
+    attributes:
+      label: Installation mode
+      options: [UEFI, Legacy BIOS, Not applicable, Unknown]
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Hardware
+      description: CPU, GPU, RAM, storage model, and whether this is a VM.
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Installer choices
+      description: Kernel, graphics, power profile, filesystem, and partitioning choice.
+  - type: textarea
+    attributes:
+      label: What happened?
+      description: Include exact steps, expected behavior, and actual behavior.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Logs
+      description: Paste relevant Calamares, journal, or systemd output after removing private data.
+      render: shell

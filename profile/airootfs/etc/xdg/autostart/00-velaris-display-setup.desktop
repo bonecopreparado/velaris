@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Velaris display detection
+Comment=Select the display's preferred resolution in the live session
+Exec=/usr/lib/velaris-live/display-setup
+OnlyShowIn=KDE;
+NoDisplay=true
+X-KDE-autostart-phase=1

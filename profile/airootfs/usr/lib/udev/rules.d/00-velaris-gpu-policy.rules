@@ -1,0 +1,2 @@
+# Select a safe module family before the generic udev driver rule runs.
+ACTION=="add", SUBSYSTEM=="pci", ATTR{vendor}=="0x10de", ATTR{class}=="0x03*", PROGRAM="/usr/lib/velaris-live/gpu-module-policy %p"

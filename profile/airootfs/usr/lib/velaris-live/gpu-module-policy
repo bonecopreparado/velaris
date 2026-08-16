@@ -1,0 +1,31 @@
+#!/usr/bin/sh
+set -eu
+
+sysfs_root="${VELARIS_SYSFS_ROOT:-/sys}"
+runtime_root="${VELARIS_RUNTIME_ROOT:-/run}"
+device_path="${sysfs_root}${1:-}"
+[ -r "${device_path}/vendor" ] || exit 0
+[ -r "${device_path}/device" ] || exit 0
+
+IFS= read -r vendor < "${device_path}/vendor"
+[ "${vendor}" = "0x10de" ] || exit 0
+IFS= read -r device < "${device_path}/device"
+
+mkdir -p "${runtime_root}/modprobe.d" "${runtime_root}/velaris"
+if [ "$((device))" -ge "$((0x1e00))" ]; then
+    {
+        printf '%s\n' 'blacklist nouveau'
+        printf '%s\n' 'options nvidia_drm modeset=1 fbdev=1'
+    } > "${runtime_root}/modprobe.d/00-velaris-gpu-policy.conf"
+    printf '%s\n' 'nvidia-open' > "${runtime_root}/velaris/live-graphics"
+else
+    {
+        printf '%s\n' 'blacklist nvidia'
+        printf '%s\n' 'blacklist nvidia_drm'
+        printf '%s\n' 'blacklist nvidia_modeset'
+        printf '%s\n' 'blacklist nvidia_uvm'
+    } > "${runtime_root}/modprobe.d/00-velaris-gpu-policy.conf"
+    printf '%s\n' 'nouveau' > "${runtime_root}/velaris/live-graphics"
+fi
+
+exit 0

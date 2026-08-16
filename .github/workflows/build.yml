@@ -138,7 +138,8 @@ jobs:
             echo "| 📥 **Download** | ${{ env.GOFILE_URL }} |" >> $GITHUB_STEP_SUMMARY
             echo "| 🔑 **Código Gofile** | \`${{ env.GOFILE_CODE }}\` |" >> $GITHUB_STEP_SUMMARY
             echo "| 💾 **Tamanho** | $ISO_SIZE |" >> $GITHUB_STEP_SUMMARY
-            echo "| 🐧 **Kernel** | linux-cachyos (BORE+LTO) |" >> $GITHUB_STEP_SUMMARY
+            echo "| 🐧 **Kernels** | BORE+LTO, CachyOS, CachyOS LTS or Arch |" >> $GITHUB_STEP_SUMMARY
+            echo "| 🎮 **Graphics** | Automatic recommendation with manual override |" >> $GITHUB_STEP_SUMMARY
             echo "| 🖥️ **Desktop** | KDE Plasma (debloated) |" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "> ⚠️ Links do Gofile expiram em ~10 dias sem acesso." >> $GITHUB_STEP_SUMMARY

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validação estática do perfil Archiso/Calamares da Velaris."""
+"""Static validation for the Velaris Archiso and Calamares profile."""
 
 from __future__ import annotations
 
@@ -104,6 +104,10 @@ def validate_yaml_and_instances() -> dict[Path, object]:
     check(referenced_pairs <= instance_pairs, "referências module@id possuem instâncias declaradas")
 
     required_pairs = {
+        ("welcome", "velaris"),
+        ("packagechooser", "kernel"),
+        ("packagechooser", "graphics"),
+        ("packagechooser", "profile"),
         ("partition", "velaris"),
         ("mount", "velaris"),
         ("unpackfs", "velaris"),
@@ -117,10 +121,28 @@ def validate_yaml_and_instances() -> dict[Path, object]:
         ("packages", "cleanup"),
         ("shellprocess", "firstboot"),
         ("shellprocess", "keyring"),
+        ("contextualprocess", "selections"),
+        ("shellprocess", "applyselections"),
     }
     check(required_pairs <= instance_pairs, "instâncias críticas da instalação estão declaradas")
 
     exec_sequence = sequence_for(settings, "exec")
+    show_sequence = sequence_for(settings, "show")
+    chooser_order = [
+        "welcome@velaris",
+        "locale",
+        "keyboard",
+        "packagechooser@kernel",
+        "packagechooser@graphics",
+        "packagechooser@profile",
+        "partition@velaris",
+    ]
+    check(
+        all(item in show_sequence for item in chooser_order)
+        and [show_sequence.index(item) for item in chooser_order]
+        == sorted(show_sequence.index(item) for item in chooser_order),
+        "installer presents locale, hardware choices, and partitioning in a safe order",
+    )
     check(
         "mount@velaris" in exec_sequence and "mount" not in exec_sequence,
         "instalação usa opções de montagem próprias da Velaris",
@@ -131,6 +153,19 @@ def validate_yaml_and_instances() -> dict[Path, object]:
         and exec_sequence.index("removeuser@velaris") < exec_sequence.index("users@velaris")
     )
     check(ordered, "conta live é removida antes da criação do usuário final")
+    selection_order = [
+        "unpackfs@velaris",
+        "contextualprocess@selections",
+        "shellprocess@applyselections",
+        "initcpiocfg@velaris",
+        "initcpio",
+    ]
+    check(
+        all(item in exec_sequence for item in selection_order)
+        and [exec_sequence.index(item) for item in selection_order]
+        == sorted(exec_sequence.index(item) for item in selection_order),
+        "hardware selections are applied after unpacking and before initramfs generation",
+    )
     check(settings.get("dont-chroot") is False, "instalação usa o sistema de destino via chroot")
     check(settings.get("disable-cancel-during-exec") is True, "cancelamento fica bloqueado durante a gravação")
     return documents
@@ -161,6 +196,84 @@ def validate_branding(documents: dict[Path, object]) -> None:
     wallpaper = PROFILE / "airootfs/usr/share/wallpapers/velaris/contents/images/velaris_desktop.png"
     check(wallpaper.is_file() and str(wallpaper).replace(str(PROFILE / "airootfs"), "") in slideshow_text, "slideshow referencia um wallpaper existente")
 
+    strings = branding.get("strings", {})
+    images = branding.get("images", {})
+    check(
+        isinstance(strings, dict)
+        and strings.get("supportUrl") == "https://github.com/Caeluum/velaris/issues/new/choose"
+        and strings.get("knownIssuesUrl") == "https://github.com/Caeluum/velaris/blob/main/KNOWN_ISSUES.md",
+        "support and known-issues buttons point to their dedicated GitHub pages",
+    )
+    check(
+        isinstance(images, dict)
+        and images.get("productWelcome") == "welcome.svg"
+        and branding.get("windowSize") == "1000px,680px",
+        "welcome page uses horizontal artwork in a predictable window size",
+    )
+    qss = PROFILE / "airootfs/usr/share/velaris/calamares/calamares.qss"
+    qss_text = qss.read_text(encoding="utf-8") if qss.is_file() else ""
+    check(
+        "QComboBox#languageWidget QAbstractItemView" in qss_text
+        and "min-height: 380px" in qss_text,
+        "language chooser receives a large scrollable popup",
+    )
+
+
+def validate_installer_choices(documents: dict[Path, object]) -> None:
+    expected_items = {
+        "packagechooser_kernel.conf": {"cachyos", "lts", "arch"},
+        "packagechooser_graphics.conf": {"nvidia-open", "nouveau", "amd", "intel", "virtual", "universal"},
+        "packagechooser_profile.conf": {"balanced", "performance", "powersave"},
+    }
+    for filename, expected in expected_items.items():
+        document = documents.get(MODULES / filename)
+        items = document.get("items", []) if isinstance(document, dict) else []
+        ids = {str(item.get("id")) for item in items if isinstance(item, dict)}
+        check(
+            isinstance(document, dict)
+            and document.get("mode") == "required"
+            and document.get("method") == "legacy"
+            and expected <= ids,
+            f"{filename} defines one required, locally processed choice",
+        )
+
+    v3_template = load_yaml(PROFILE / "airootfs/usr/share/velaris/calamares/kernel-v3.conf")
+    v3_items = v3_template.get("items", []) if isinstance(v3_template, dict) else []
+    v3_ids = {
+        str(item.get("id"))
+        for item in v3_items
+        if isinstance(item, dict)
+    }
+    check(
+        isinstance(v3_template, dict)
+        and v3_template.get("default") == "bore-lto"
+        and "bore-lto" in v3_ids,
+        "BORE+LTO exists only in the CPU-gated x86-64-v3 chooser template",
+    )
+
+    contextual = documents.get(MODULES / "contextualprocess_selections.conf")
+    contextual_text = repr(contextual) if isinstance(contextual, dict) else ""
+    check(
+        all(
+            token in contextual_text
+            for token in ("packagechooser_kernel", "packagechooser_graphics", "packagechooser_profile", "record-selection")
+        ),
+        "contextual process records every installer choice",
+    )
+
+    partition = documents.get(MODULES / "partition_velaris.conf")
+    welcome = documents.get(MODULES / "welcome_velaris.conf")
+    requirements = welcome.get("requirements", {}) if isinstance(welcome, dict) else {}
+    check(
+        isinstance(partition, dict)
+        and partition.get("allowManualPartitioning") is True
+        and partition.get("drawNestedPartitions") is True
+        and partition.get("initialPartitioningChoice") == "none"
+        and isinstance(requirements, dict)
+        and float(requirements.get("requiredStorage", 0)) >= 24,
+        "manual and alongside partitioning have a real storage requirement",
+    )
+
 
 def validate_live_identity(documents: dict[Path, object]) -> None:
     unpack = documents.get(MODULES / "unpackfs_velaris.conf")
@@ -181,6 +294,10 @@ def validate_live_identity(documents: dict[Path, object]) -> None:
         "/etc/polkit-1/rules.d/49-calamares.rules",
         "/etc/calamares/",
         "/usr/share/applications/calamares.desktop",
+        "/etc/xdg/autostart/00-velaris-display-setup.desktop",
+        "/usr/bin/velaris-calamares",
+        "/usr/lib/velaris-live/",
+        "/usr/lib/udev/rules.d/00-velaris-gpu-policy.rules",
     }
     check(required_excludes <= excludes, "unpackfs exclui identidade, autologin e privilégios do live")
     check(isinstance(removeuser, dict) and removeuser.get("username") == "velaris", "removeuser elimina a conta live")
@@ -209,6 +326,23 @@ def validate_live_identity(documents: dict[Path, object]) -> None:
     )
     check("mask systemd-oomd.service" in customize, "sessão live evita um segundo gerenciador de OOM")
     check(
+        all(
+            token in customize
+            for token in (
+                "systemctl --global mask kde-baloo.service",
+                "systemctl --global mask plasma-xembedsniproxy.service",
+                "systemctl --global mask plasma-gmenudbusmenuproxy.service",
+            )
+        ),
+        "unused Plasma indexer and compatibility bridges are masked globally",
+    )
+    check(
+        "LANG=en_US.UTF-8" in customize
+        and "10-velaris-live-locale.conf" in customize
+        and "rm -f /usr/lib/modprobe.d/nvidia-utils.conf" in customize,
+        "live session stays English and allows Nouveau fallback before installation",
+    )
+    check(
         all(token in customize for token in ("pacman-key --init", "pacman-key --populate archlinux cachyos"))
         and not re.search(r"^\s*pacman\s+-Scc\b", customize, flags=re.MULTILINE),
         "live inicializa os chaveiros e preserva os bancos do pacman",
@@ -218,8 +352,8 @@ def validate_live_identity(documents: dict[Path, object]) -> None:
     restricted_policy = all(
         token in policy
         for token in (
-            'action.id === "io.calamares.calamares.pkexec.run"',
-            'action.lookup("program") === "/usr/bin/calamares"',
+            'action.id === "org.freedesktop.policykit.exec"',
+            'action.lookup("program") === "/usr/lib/velaris-live/calamares-root"',
             'subject.user === "velaris"',
             "subject.local",
             "subject.active",
@@ -228,7 +362,53 @@ def validate_live_identity(documents: dict[Path, object]) -> None:
     check(restricted_policy, "regra Polkit limita elevação ao Calamares da sessão live")
 
     desktop = (PROFILE / "airootfs/usr/share/applications/calamares.desktop").read_text(encoding="utf-8")
-    check("Exec=/usr/bin/pkexec /usr/bin/calamares" in desktop, "atalho live chama o executável autorizado pelo Polkit")
+    check("Exec=/usr/bin/velaris-calamares" in desktop, "live shortcut uses the session-preserving installer wrapper")
+
+    wrapper_paths = [
+        PROFILE / "airootfs/usr/bin/velaris-calamares",
+        PROFILE / "airootfs/usr/lib/velaris-live/calamares-root",
+        PROFILE / "airootfs/usr/lib/velaris-live/bin/xdg-open",
+        PROFILE / "airootfs/usr/lib/velaris-live/prepare-installer",
+        PROFILE / "airootfs/usr/lib/velaris-live/display-setup",
+        PROFILE / "airootfs/usr/lib/velaris-live/gpu-module-policy",
+    ]
+    check(
+        all(path.is_file() and path.stat().st_mode & 0o111 for path in wrapper_paths),
+        "live installer, URL bridge, hardware detector, and display helper are executable",
+    )
+    root_wrapper = wrapper_paths[1].read_text(encoding="utf-8")
+    url_bridge = wrapper_paths[2].read_text(encoding="utf-8")
+    detector = wrapper_paths[3].read_text(encoding="utf-8")
+    boot_policy = wrapper_paths[5].read_text(encoding="utf-8")
+    check(
+        "DBUS_SESSION_BUS_ADDRESS" in root_wrapper
+        and "/usr/lib/velaris-live/bin" in root_wrapper
+        and "runuser -u velaris" in url_bridge,
+        "support URLs are delegated back to the unprivileged live browser session",
+    )
+    check(
+        "10de:" in detector
+        and "1002:" in detector
+        and "8086:" in detector
+        and "systemd-detect-virt" in detector
+        and "x86-64-v3 (supported" in detector,
+        "hardware detector covers NVIDIA, AMD, Intel, VMs, and CPU v3 capability",
+    )
+    udev_policy = PROFILE / "airootfs/usr/lib/udev/rules.d/00-velaris-gpu-policy.rules"
+    check(
+        udev_policy.is_file()
+        and 'ATTR{vendor}==\"0x10de\"' in udev_policy.read_text(encoding="utf-8")
+        and "0x1e00" in boot_policy
+        and "blacklist nouveau" in boot_policy
+        and "blacklist nvidia" in boot_policy,
+        "live boot selects NVIDIA Open or Nouveau before generic udev driver loading",
+    )
+    sddm_live = (PROFILE / "airootfs/etc/sddm.conf.d/autologin.conf").read_text(encoding="utf-8")
+    display_helper = wrapper_paths[4].read_text(encoding="utf-8")
+    check(
+        "Session=plasmax11" in sddm_live and "xrandr --auto" in display_helper,
+        "live session uses the broad X11 fallback and requests the preferred display mode",
+    )
 
 
 def validate_packages_and_performance() -> None:
@@ -241,11 +421,22 @@ def validate_packages_and_performance() -> None:
     duplicates = sorted({package for package in packages if packages.count(package) > 1})
     check(not duplicates, f"lista de pacotes não contém duplicatas{': ' + ', '.join(duplicates) if duplicates else ''}")
 
+    package_names = {package.split("/", 1)[-1] for package in packages}
     required = {
+        "linux-cachyos-bore-lto",
         "linux-cachyos",
+        "linux-cachyos-lts",
+        "linux",
+        "linux-cachyos-bore-lto-nvidia-open",
+        "linux-cachyos-nvidia-open",
+        "linux-cachyos-lts-nvidia-open",
+        "nvidia-open",
+        "nvidia-utils",
+        "lib32-nvidia-utils",
         "archlinux-keyring",
         "cachyos-keyring",
         "cachyos-mirrorlist",
+        "cachyos-v3-mirrorlist",
         "cachyos-calamares",
         "grub",
         "efibootmgr",
@@ -257,14 +448,26 @@ def validate_packages_and_performance() -> None:
         "lvm2",
         "mkinitcpio-openswap",
         "vulkan-nouveau",
+        "lib32-vulkan-nouveau",
+        "vulkan-radeon",
+        "lib32-vulkan-radeon",
+        "vulkan-intel",
+        "lib32-vulkan-intel",
+        "vulkan-virtio",
+        "lib32-vulkan-virtio",
         "intel-media-driver",
+        "pciutils",
+        "open-vm-tools",
+        "virtualbox-guest-utils",
+        "qemu-guest-agent",
+        "spice-vdagent",
         "fish",
         "pacman-contrib",
     }
-    check(required <= set(packages), "kernel, bootloaders, instalador, X11 e regras de desempenho estão presentes")
-    check(not {"iwd", "dhcpcd"} & set(packages), "não há pilhas de rede concorrentes com o NetworkManager")
+    check(required <= package_names, "selectable kernels, matched graphics stacks, VM tools, and installer packages are present")
+    check(not {"iwd", "dhcpcd"} & package_names, "não há pilhas de rede concorrentes com o NetworkManager")
     check(
-        not {"zsh", "zsh-completions", "zsh-syntax-highlighting", "zsh-autosuggestions"} & set(packages),
+        not {"zsh", "zsh-completions", "zsh-syntax-highlighting", "zsh-autosuggestions"} & package_names,
         "plugins Zsh interpretados não permanecem instalados junto do Fish",
     )
 
@@ -296,6 +499,14 @@ def validate_packages_and_performance() -> None:
     check(not contains("LatencyPolicy=ExtremelyLow") and not contains("Backend=OpenGL"), "KWin escolhe automaticamente backend e latência")
     check(not contains("TrustAll"), "repositórios não desativam verificação de assinatura")
     check(not (PROFILE / "airootfs/etc/pacman.d/cachyos-mirrorlist").exists(), "mirrorlist oficial do pacote CachyOS não é sobrescrita")
+    build_pacman = (PROFILE / "pacman.conf").read_text(encoding="utf-8")
+    runtime_pacman = (PROFILE / "airootfs/etc/pacman.conf").read_text(encoding="utf-8")
+    check(
+        "Architecture = x86_64 x86_64_v3" in build_pacman
+        and build_pacman.index("[cachyos]") < build_pacman.index("[cachyos-v3]")
+        and "#[cachyos-v3]" in runtime_pacman,
+        "v3 kernel packages build safely while the installed v3 repository stays opt-in",
+    )
     forced_xorg = [
         PROFILE / "airootfs/etc/X11/xorg.conf.d/10-vmware.conf",
         PROFILE / "airootfs/etc/X11/xorg.conf.d/10-modesetting.conf",
@@ -344,6 +555,11 @@ def validate_first_boot(documents: dict[Path, object]) -> None:
         and service_actions.get("paccache.timer") == "enable",
         "TRIM e limpeza segura do cache de pacotes usam timers",
     )
+    check(
+        service_actions.get("bluetooth.service") == "disable"
+        and service_actions.get("velaris-performance-profile.service") == "enable",
+        "Bluetooth is not forced on and the selected power profile is applied",
+    )
     firstboot_service = PROFILE / "airootfs/usr/lib/systemd/system/velaris-firstboot.service"
     check(firstboot_service.is_file(), "unidade de finalização do primeiro boot existe")
     service_text = firstboot_service.read_text(encoding="utf-8") if firstboot_service.is_file() else ""
@@ -375,7 +591,18 @@ def validate_first_boot(documents: dict[Path, object]) -> None:
         if isinstance(entry, dict) and entry.get("filesystem") == "btrfs":
             btrfs_options = [str(option) for option in entry.get("options", [])]
             break
-    check("compress=zstd:1" in btrfs_options, "Btrfs instalado usa compressão Zstd nível 1")
+    check(
+        "compress=zstd:1" in btrfs_options and "noatime" in btrfs_options,
+        "installed Btrfs uses low-cost compression without access-time writes",
+    )
+
+    grubcfg = documents.get(MODULES / "grubcfg_velaris.conf")
+    grub_defaults = grubcfg.get("defaults", {}) if isinstance(grubcfg, dict) else {}
+    check(
+        isinstance(grub_defaults, dict)
+        and grub_defaults.get("GRUB_DISABLE_OS_PROBER") is False,
+        "GRUB OS probing remains enabled for dual-boot discovery",
+    )
 
     removed_packages: set[str] = set()
     if isinstance(packages, dict):
@@ -396,10 +623,48 @@ def validate_first_boot(documents: dict[Path, object]) -> None:
         "Calamares prepara o chaveiro Arch Linux e CachyOS no destino",
     )
 
+    selection_script = PROFILE / "airootfs/usr/lib/velaris/apply-selections"
+    selection_text = selection_script.read_text(encoding="utf-8") if selection_script.is_file() else ""
+    check(
+        all(
+            token in selection_text
+            for token in (
+                "linux-cachyos-bore-lto",
+                "linux-cachyos-lts",
+                'selected_kernel="linux"',
+                "x86-64-v3 (supported",
+                "nvidia_drm modeset=1",
+                "systemd-detect-virt",
+                "FILES=()",
+                '"${module_dir}/vmlinuz"',
+                "remove_candidates+=(cachyos-v3-mirrorlist)",
+                "Architecture = x86_64",
+            )
+        ),
+        "selection helper gates v3, keeps one kernel, configures NVIDIA, and handles VMs",
+    )
+    power_service = PROFILE / "airootfs/usr/lib/systemd/system/velaris-performance-profile.service"
+    power_helper = PROFILE / "airootfs/usr/lib/velaris/apply-runtime-profile"
+    check(
+        power_service.is_file()
+        and power_helper.is_file()
+        and "powerprofilesctl set" in power_helper.read_text(encoding="utf-8"),
+        "power-profile selection has a non-fatal systemd application path",
+    )
+
 
 def validate_shell() -> None:
     shell_files = sorted(ROOT.glob("*.sh")) + sorted((ROOT / ".devcontainer").glob("*.sh"))
     shell_files += sorted(PROFILE.rglob("*.sh"))
+    for path in PROFILE.rglob("*"):
+        if not path.is_file() or path in shell_files:
+            continue
+        try:
+            if path.open("rb").readline().strip() == b"#!/usr/bin/env bash":
+                shell_files.append(path)
+        except OSError:
+            continue
+    shell_files = sorted(set(shell_files))
     failures: list[str] = []
     for path in shell_files:
         result = subprocess.run(["bash", "-n", str(path)], capture_output=True, text=True, check=False)
@@ -408,6 +673,22 @@ def validate_shell() -> None:
     check(not failures, "scripts Bash passam em bash -n")
     for failure in failures:
         print(f"       {failure}")
+
+    helper_paths = [
+        PROFILE / "airootfs/usr/bin/velaris-calamares",
+        PROFILE / "airootfs/usr/lib/velaris-live/calamares-root",
+        PROFILE / "airootfs/usr/lib/velaris-live/display-setup",
+        PROFILE / "airootfs/usr/lib/velaris-live/prepare-installer",
+        PROFILE / "airootfs/usr/lib/velaris-live/gpu-module-policy",
+        PROFILE / "airootfs/usr/lib/velaris-live/bin/xdg-open",
+        PROFILE / "airootfs/usr/lib/velaris/record-selection",
+        PROFILE / "airootfs/usr/lib/velaris/apply-selections",
+        PROFILE / "airootfs/usr/lib/velaris/apply-runtime-profile",
+    ]
+    check(
+        all(path.is_file() and path.stat().st_mode & 0o111 for path in helper_paths),
+        "all installer and runtime shell helpers are executable",
+    )
 
     fish_config = PROFILE / "airootfs/etc/skel/.config/fish/config.fish"
     fish_binary = shutil.which("fish")
@@ -442,6 +723,11 @@ def validate_profiledef() -> None:
         and hooks.index("kms") < hooks.index("plymouth") < hooks.index("archiso"),
         "hooks gráficos do initramfs live estão em ordem segura",
     )
+    check(
+        "/usr/lib/udev/rules.d/00-velaris-gpu-policy.rules" in mkinitcpio
+        and "/usr/lib/velaris-live/gpu-module-policy" in mkinitcpio,
+        "early live GPU policy is embedded in the initramfs",
+    )
 
     live_boot_configs = [
         PROFILE / "efiboot/loader/entries/velaris.conf",
@@ -464,6 +750,14 @@ def validate_profiledef() -> None:
         and "/usr/share/zoneinfo/UTC" in customize
         and "geo.mirror.pkgbuild.com" in mirrorlist,
         "sessão live inicia em inglês, teclado US, UTC e mirrors globais",
+    )
+    autologin = (PROFILE / "airootfs/etc/sddm.conf.d/autologin.conf").read_text(encoding="utf-8")
+    display_autostart = PROFILE / "airootfs/etc/xdg/autostart/00-velaris-display-setup.desktop"
+    check(
+        "Session=plasmax11" in autologin
+        and display_autostart.is_file()
+        and "/usr/lib/velaris-live/display-setup" in display_autostart.read_text(encoding="utf-8"),
+        "live desktop starts with the compatible session and display detector",
     )
 
     metadata_paths = [
@@ -502,11 +796,22 @@ def validate_workflow() -> None:
         "build inspeciona o chaveiro ativo dentro do SquashFS final",
     )
 
+    check(
+        (ROOT / "KNOWN_ISSUES.md").is_file()
+        and (ROOT / ".github/ISSUE_TEMPLATE/bug_report.yml").is_file()
+        and all(
+            token in (ROOT / "README.md").read_text(encoding="utf-8")
+            for token in ("BORE+LTO", "Early live-boot selection", "Install alongside")
+        ),
+        "English project docs cover hardware selection, dual boot, and support",
+    )
+
 
 def main() -> int:
     print("Validando perfil Velaris...\n")
     documents = validate_yaml_and_instances()
     validate_branding(documents)
+    validate_installer_choices(documents)
     validate_live_identity(documents)
     validate_packages_and_performance()
     validate_first_boot(documents)

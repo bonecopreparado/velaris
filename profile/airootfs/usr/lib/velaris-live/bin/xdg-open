@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+[[ "$#" -eq 1 ]] || exit 64
+case "$1" in
+    https://*|http://*) ;;
+    *) exit 65 ;;
+esac
+
+live_uid="$(id -u velaris)"
+args=(
+    "HOME=/home/velaris"
+    "USER=velaris"
+    "LOGNAME=velaris"
+    "DISPLAY=${DISPLAY:-:0}"
+    "XDG_RUNTIME_DIR=/run/user/${live_uid}"
+    "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/${live_uid}/bus"
+    "XDG_CURRENT_DESKTOP=KDE"
+    "DESKTOP_SESSION=plasmax11"
+)
+if [[ -n "${XAUTHORITY:-}" ]]; then
+    args+=("XAUTHORITY=${XAUTHORITY}")
+fi
+
+exec /usr/bin/runuser -u velaris -- /usr/bin/env "${args[@]}" /usr/bin/xdg-open "$1"

@@ -51,7 +51,10 @@ systemctl enable NetworkManager.service
 systemctl enable NetworkManager-dispatcher.service
 systemctl disable NetworkManager-wait-online.service 2>/dev/null || true
 systemctl enable sddm.service
-systemctl enable bluetooth.service
+systemctl disable bluetooth.service 2>/dev/null || true
+systemctl disable vmtoolsd.service vmware-vmblock-fuse.service \
+    vboxservice.service qemu-guest-agent.service spice-vdagentd.service \
+    2>/dev/null || true
 systemctl disable cups.service     2>/dev/null || true
 systemctl enable cups.socket       2>/dev/null || true
 systemctl enable irqbalance.service
@@ -59,6 +62,13 @@ systemctl enable earlyoom.service
 systemctl mask systemd-oomd.service 2>/dev/null || true
 systemctl enable systemd-timesyncd.service 2>/dev/null || true
 systemctl enable fstrim.timer 2>/dev/null || true
+
+# Keep optional Plasma compatibility bridges out of the default session. They
+# can be restored with `systemctl --global unmask <unit>` when needed.
+systemctl --global mask kde-baloo.service 2>/dev/null || true
+systemctl --global mask plasma-baloorunner.service 2>/dev/null || true
+systemctl --global mask plasma-xembedsniproxy.service 2>/dev/null || true
+systemctl --global mask plasma-gmenudbusmenuproxy.service 2>/dev/null || true
 
 # open-vm-tools: causa conflito com Plasma Wayland em VMware
 # Desativado por padrão — usuário habilita manualmente se precisar
@@ -80,6 +90,12 @@ install -d -m 0755 /home/velaris/.config/fish
 install -m 0644 /etc/skel/.config/fish/config.fish /home/velaris/.config/fish/config.fish
 chown -R velaris:velaris /home/velaris/.config/fish
 
+# English is the live-session default. Calamares writes the user's selected
+# locale to the installed system, and /home/velaris is never copied there.
+install -d -m 0755 /home/velaris/.config/environment.d
+printf 'LANG=en_US.UTF-8\nLC_MESSAGES=en_US.UTF-8\n' \
+    > /home/velaris/.config/environment.d/10-velaris-live-locale.conf
+
 # ── XDG dirs ─────────────────────────────────────────────────────────────────
 su - velaris -c "xdg-user-dirs-update" 2>/dev/null || true
 
@@ -97,6 +113,23 @@ chown -R velaris:velaris /home/velaris/Desktop
 mkdir -p /home/velaris/.config/autostart
 cp /usr/share/applications/calamares.desktop /home/velaris/.config/autostart/
 chown -R velaris:velaris /home/velaris/.config
+
+# NVIDIA's userspace package blacklists Nouveau. The live image must remain
+# usable on pre-Turing cards, so driver-specific blacklisting is applied only
+# to installed systems that selected NVIDIA Open.
+rm -f /usr/lib/modprobe.d/nvidia-utils.conf
+
+# Ensure all Velaris helpers retain executable permissions in the image.
+chmod 0755 \
+    /usr/bin/velaris-calamares \
+    /usr/lib/velaris-live/calamares-root \
+    /usr/lib/velaris-live/display-setup \
+    /usr/lib/velaris-live/gpu-module-policy \
+    /usr/lib/velaris-live/prepare-installer \
+    /usr/lib/velaris-live/bin/xdg-open \
+    /usr/lib/velaris/record-selection \
+    /usr/lib/velaris/apply-selections \
+    /usr/lib/velaris/apply-runtime-profile
 
 # ── Cache de ícones (garante que o tema velaris seja reconhecido) ───────────
 gtk-update-icon-cache -f /usr/share/icons/velaris 2>/dev/null || true
