@@ -2,18 +2,19 @@
 # Velaris — customize_airootfs.sh
 set -euo pipefail
 
-echo "[Velaris] Customizando airootfs..."
+echo "[Velaris] Customizing airootfs..."
 
 # ── Locale e timezone ─────────────────────────────────────────────────────────
 grep -qxF "pt_BR.UTF-8 UTF-8" /etc/locale.gen || echo "pt_BR.UTF-8 UTF-8" >> /etc/locale.gen
 grep -qxF "en_US.UTF-8 UTF-8" /etc/locale.gen || echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
 locale-gen
-ln -sf /usr/share/zoneinfo/America/Sao_Paulo /etc/localtime
+printf 'LANG=en_US.UTF-8\n' > /etc/locale.conf
+ln -sf /usr/share/zoneinfo/UTC /etc/localtime
 
 # ── Chaveiros do pacman ──────────────────────────────────────────────────────
 # Ter os pacotes *-keyring instalados não popula automaticamente o chaveiro
 # ativo do sistema live. Sem isto, o banco assinado do CachyOS é rejeitado.
-echo "[Velaris] Inicializando chaveiros Arch Linux e CachyOS..."
+echo "[Velaris] Initializing Arch Linux and CachyOS keyrings..."
 rm -rf /etc/pacman.d/gnupg
 install -d -m 0755 /etc/pacman.d/gnupg
 pacman-key --init
@@ -31,7 +32,7 @@ groupadd -r autologin 2>/dev/null || true
 if ! id "velaris" &>/dev/null; then
     useradd -m \
         -G wheel,audio,video,optical,storage,network,lp,autologin \
-        -s /bin/zsh \
+        -s /usr/bin/fish \
         velaris
 fi
 
@@ -51,9 +52,11 @@ systemctl enable NetworkManager-dispatcher.service
 systemctl disable NetworkManager-wait-online.service 2>/dev/null || true
 systemctl enable sddm.service
 systemctl enable bluetooth.service
-systemctl enable cups.service      2>/dev/null || true
+systemctl disable cups.service     2>/dev/null || true
+systemctl enable cups.socket       2>/dev/null || true
 systemctl enable irqbalance.service
 systemctl enable earlyoom.service
+systemctl mask systemd-oomd.service 2>/dev/null || true
 systemctl enable systemd-timesyncd.service 2>/dev/null || true
 systemctl enable fstrim.timer 2>/dev/null || true
 
@@ -70,11 +73,12 @@ ufw default deny incoming
 ufw default allow outgoing
 ufw --force enable
 
-# ── ZSH ───────────────────────────────────────────────────────────────────────
-chsh -s /bin/zsh root
-cp /etc/skel/.zshrc /root/.zshrc 2>/dev/null || true
-cp /etc/skel/.zshrc /home/velaris/.zshrc 2>/dev/null || true
-chown velaris:velaris /home/velaris/.zshrc 2>/dev/null || true
+# ── Fish ──────────────────────────────────────────────────────────────────────
+# useradd normally copies /etc/skel, but keep this explicit for reproducible
+# live sessions when an existing home directory is reused during development.
+install -d -m 0755 /home/velaris/.config/fish
+install -m 0644 /etc/skel/.config/fish/config.fish /home/velaris/.config/fish/config.fish
+chown -R velaris:velaris /home/velaris/.config/fish
 
 # ── XDG dirs ─────────────────────────────────────────────────────────────────
 su - velaris -c "xdg-user-dirs-update" 2>/dev/null || true
@@ -99,7 +103,7 @@ gtk-update-icon-cache -f /usr/share/icons/velaris 2>/dev/null || true
 gtk-update-icon-cache -f /usr/share/icons/hicolor 2>/dev/null || true
 
 # ── Garante que o initramfs live contém o tema Plymouth padrão ───────────────
-mkinitcpio -P 2>&1 || echo "[Velaris] AVISO: mkinitcpio -P falhou, verifique MODULES/HOOKS"
+mkinitcpio -P 2>&1 || echo "[Velaris] WARNING: mkinitcpio -P failed; check MODULES/HOOKS"
 
 # ── Limpeza ───────────────────────────────────────────────────────────────────
 # Limpa somente pacotes baixados. `pacman -Scc` também remove os bancos de
@@ -107,4 +111,4 @@ mkinitcpio -P 2>&1 || echo "[Velaris] AVISO: mkinitcpio -P falhou, verifique MOD
 # existiam.
 rm -rf /var/cache/pacman/pkg/* /tmp/*
 
-echo "[Velaris] Concluído ✓"
+echo "[Velaris] Complete ✓"

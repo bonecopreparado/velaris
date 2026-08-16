@@ -62,6 +62,7 @@ The project does not rely on unmeasured, aggressive tweaks. Every decision shoul
 | Display manager | SDDM |
 | Audio | PipeWire + WirePlumber |
 | Networking | NetworkManager |
+| Interactive shell | Fish |
 | Init system | systemd |
 | Bootloader | GRUB with UEFI and legacy BIOS support |
 | Installer | Calamares |
@@ -71,7 +72,11 @@ The project does not rely on unmeasured, aggressive tweaks. Every decision shoul
 
 - CachyOS kernel focused on interactive workloads and desktop responsiveness.
 - ZRAM to reduce the impact of memory pressure.
+- zswap explicitly disabled to avoid compressing the same memory twice.
 - Ananicy C++, `irqbalance`, GameMode, and `earlyoom` integrated into the profile.
+- Fish with native autosuggestions and syntax highlighting, plus Fastfetch once per login session.
+- CUPS socket activation and scheduled package-cache maintenance.
+- Btrfs Zstd level 1 compression for new Calamares installations.
 - KDE Plasma 6 with animations and effects adjusted for a more direct experience.
 - PipeWire for audio, video, and compatibility with modern applications.
 - Support for Btrfs, Ext4, XFS, NTFS, exFAT, LUKS, and LVM.

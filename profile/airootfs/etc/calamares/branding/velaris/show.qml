@@ -36,7 +36,7 @@ Presentation {
 
             Text {
                 width: parent.width
-                text: qsTr("Instalando a Velaris")
+                text: qsTr("Installing Velaris")
                 color: "#ffffff"
                 font.pixelSize: 28
                 font.bold: true
@@ -45,7 +45,7 @@ Presentation {
 
             Text {
                 width: parent.width
-                text: qsTr("Preparando um sistema rápido, estável e pronto para usar.")
+                text: qsTr("Preparing a fast, stable, and ready-to-use system.")
                 color: "#d7e8ff"
                 font.pixelSize: 16
                 wrapMode: Text.WordWrap

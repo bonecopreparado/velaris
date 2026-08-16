@@ -12,10 +12,10 @@ strings:
   versionedName: "Velaris Rolling"
   shortVersionedName: "Velaris"
   bootloaderEntryName: Velaris
-  productUrl: "https://github.com/bonecopreparado/velaris"
-  supportUrl: "https://github.com/bonecopreparado/velaris/issues"
-  knownIssuesUrl: "https://github.com/bonecopreparado/velaris/issues"
-  releaseNotesUrl: "https://github.com/bonecopreparado/velaris"
+  productUrl: "https://github.com/Caeluum/velaris"
+  supportUrl: "https://github.com/Caeluum/velaris/issues"
+  knownIssuesUrl: "https://github.com/Caeluum/velaris/issues"
+  releaseNotesUrl: "https://github.com/Caeluum/velaris/releases"
 
 images:
   productLogo: "logo.png"

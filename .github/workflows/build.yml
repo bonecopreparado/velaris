@@ -54,7 +54,7 @@ jobs:
           pacman -S --noconfirm \
             archiso git wget curl base-devel jq \
             squashfs-tools libisoburn dosfstools mtools erofs-utils \
-            python python-yaml
+            python python-yaml fish
 
       - name: Configurar keyring do pacman
         run: |

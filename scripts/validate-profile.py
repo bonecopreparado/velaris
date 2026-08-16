@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -104,6 +105,7 @@ def validate_yaml_and_instances() -> dict[Path, object]:
 
     required_pairs = {
         ("partition", "velaris"),
+        ("mount", "velaris"),
         ("unpackfs", "velaris"),
         ("users", "velaris"),
         ("displaymanager", "velaris"),
@@ -119,6 +121,10 @@ def validate_yaml_and_instances() -> dict[Path, object]:
     check(required_pairs <= instance_pairs, "instâncias críticas da instalação estão declaradas")
 
     exec_sequence = sequence_for(settings, "exec")
+    check(
+        "mount@velaris" in exec_sequence and "mount" not in exec_sequence,
+        "instalação usa opções de montagem próprias da Velaris",
+    )
     ordered = (
         "removeuser@velaris" in exec_sequence
         and "users@velaris" in exec_sequence
@@ -184,6 +190,11 @@ def validate_live_identity(documents: dict[Path, object]) -> None:
         and users.get("setRootPassword") is False,
         "usuário final não recebe autologin nem senha root reutilizada",
     )
+    user_settings = users.get("user", {}) if isinstance(users, dict) else {}
+    check(
+        isinstance(user_settings, dict) and user_settings.get("shell") == "/usr/bin/fish",
+        "Fish é o shell padrão do usuário instalado",
+    )
 
     skel_autostart = PROFILE / "airootfs/etc/skel/.config/autostart/calamares.desktop"
     check(not skel_autostart.exists(), "Calamares não fica no autostart de novos usuários")
@@ -191,6 +202,12 @@ def validate_live_identity(documents: dict[Path, object]) -> None:
     customize = (PROFILE / "airootfs/root/customize_airootfs.sh").read_text(encoding="utf-8")
     check("passwd -l root" in customize and "passwd -d root" not in customize, "conta root do live permanece bloqueada")
     check("disable NetworkManager-wait-online.service" in customize, "sessão live não espera rede durante o boot")
+    check("-s /usr/bin/fish" in customize, "usuário live também usa Fish")
+    check(
+        "disable cups.service" in customize and "enable cups.socket" in customize,
+        "CUPS da sessão live usa ativação por socket",
+    )
+    check("mask systemd-oomd.service" in customize, "sessão live evita um segundo gerenciador de OOM")
     check(
         all(token in customize for token in ("pacman-key --init", "pacman-key --populate archlinux cachyos"))
         and not re.search(r"^\s*pacman\s+-Scc\b", customize, flags=re.MULTILINE),
@@ -241,9 +258,24 @@ def validate_packages_and_performance() -> None:
         "mkinitcpio-openswap",
         "vulkan-nouveau",
         "intel-media-driver",
+        "fish",
+        "pacman-contrib",
     }
     check(required <= set(packages), "kernel, bootloaders, instalador, X11 e regras de desempenho estão presentes")
     check(not {"iwd", "dhcpcd"} & set(packages), "não há pilhas de rede concorrentes com o NetworkManager")
+    check(
+        not {"zsh", "zsh-completions", "zsh-syntax-highlighting", "zsh-autosuggestions"} & set(packages),
+        "plugins Zsh interpretados não permanecem instalados junto do Fish",
+    )
+
+    fish_config = PROFILE / "airootfs/etc/skel/.config/fish/config.fish"
+    fish_text = fish_config.read_text(encoding="utf-8") if fish_config.is_file() else ""
+    check(
+        fish_config.is_file()
+        and "XDG_RUNTIME_DIR/velaris-fastfetch-shown" in fish_text
+        and "command fastfetch" in fish_text,
+        "Fastfetch do Fish aparece somente uma vez por sessão",
+    )
 
     profile_texts: list[tuple[Path, str]] = []
     for path in PROFILE.rglob("*"):
@@ -281,15 +313,36 @@ def validate_first_boot(documents: dict[Path, object]) -> None:
     services = documents.get(MODULES / "services-systemd_velaris.conf")
     bootloader = documents.get(MODULES / "bootloader_velaris.conf")
     packages = documents.get(MODULES / "packages_cleanup.conf")
+    mount_config = documents.get(MODULES / "mount_velaris.conf")
 
     check(
         isinstance(shellprocess, dict) and "firstboot-plymouth" in repr(shellprocess.get("script", [])),
         "instalação prepara o tema Plymouth temporário do primeiro boot",
     )
     service_units = services.get("units", []) if isinstance(services, dict) else []
+    service_actions = {
+        str(unit.get("name")): str(unit.get("action"))
+        for unit in service_units
+        if isinstance(unit, dict)
+    }
     check(
         any(isinstance(unit, dict) and unit.get("name") == "velaris-firstboot.service" and unit.get("action") == "enable" for unit in service_units),
         "serviço que restaura o Plymouth normal é habilitado no destino",
+    )
+    check(
+        service_actions.get("cups.service") == "disable"
+        and service_actions.get("cups.socket") == "enable",
+        "sistema instalado ativa o CUPS somente por socket",
+    )
+    check(
+        service_actions.get("earlyoom.service") == "enable"
+        and service_actions.get("systemd-oomd.service") == "mask",
+        "somente o earlyoom gerencia pressão extrema de memória",
+    )
+    check(
+        service_actions.get("fstrim.timer") == "enable"
+        and service_actions.get("paccache.timer") == "enable",
+        "TRIM e limpeza segura do cache de pacotes usam timers",
     )
     firstboot_service = PROFILE / "airootfs/usr/lib/systemd/system/velaris-firstboot.service"
     check(firstboot_service.is_file(), "unidade de finalização do primeiro boot existe")
@@ -308,6 +361,21 @@ def validate_first_boot(documents: dict[Path, object]) -> None:
         "unidade restaura o tema normal, reconstrói o initramfs e remove o marcador",
     )
     check(isinstance(bootloader, dict) and bootloader.get("efiBootLoader") == "grub", "Calamares instala GRUB explicitamente")
+    boot_params = bootloader.get("kernelParams", []) if isinstance(bootloader, dict) else []
+    grubcfg = documents.get(MODULES / "grubcfg_velaris.conf")
+    grub_params = grubcfg.get("kernel_params", []) if isinstance(grubcfg, dict) else []
+    check(
+        "zswap.enabled=0" in boot_params and "zswap.enabled=0" in grub_params,
+        "zswap fica desativado no sistema instalado quando ZRAM está ativa",
+    )
+
+    mount_options = mount_config.get("mountOptions", []) if isinstance(mount_config, dict) else []
+    btrfs_options: list[str] = []
+    for entry in mount_options:
+        if isinstance(entry, dict) and entry.get("filesystem") == "btrfs":
+            btrfs_options = [str(option) for option in entry.get("options", [])]
+            break
+    check("compress=zstd:1" in btrfs_options, "Btrfs instalado usa compressão Zstd nível 1")
 
     removed_packages: set[str] = set()
     if isinstance(packages, dict):
@@ -341,6 +409,21 @@ def validate_shell() -> None:
     for failure in failures:
         print(f"       {failure}")
 
+    fish_config = PROFILE / "airootfs/etc/skel/.config/fish/config.fish"
+    fish_binary = shutil.which("fish")
+    if fish_binary:
+        result = subprocess.run(
+            [fish_binary, "--no-execute", str(fish_config)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        check(result.returncode == 0, "configuração Fish passa na validação de sintaxe")
+        if result.returncode:
+            print(f"       {result.stderr.strip()}")
+    else:
+        print("[INFO] fish não está disponível; a sintaxe será validada no GitHub Actions")
+
 
 def validate_profiledef() -> None:
     profiledef = (PROFILE / "profiledef.sh").read_text(encoding="utf-8")
@@ -358,6 +441,40 @@ def validate_profiledef() -> None:
         all(name in hooks for name in ("kms", "plymouth", "archiso"))
         and hooks.index("kms") < hooks.index("plymouth") < hooks.index("archiso"),
         "hooks gráficos do initramfs live estão em ordem segura",
+    )
+
+    live_boot_configs = [
+        PROFILE / "efiboot/loader/entries/velaris.conf",
+        PROFILE / "efiboot/loader/entries/velaris-fallback.conf",
+        PROFILE / "grub/grub.cfg",
+        PROFILE / "syslinux/syslinux.cfg",
+    ]
+    check(
+        all("zswap.enabled=0" in path.read_text(encoding="utf-8") for path in live_boot_configs),
+        "todas as rotas de boot live evitam zswap duplicada com ZRAM",
+    )
+
+    locale = (PROFILE / "airootfs/etc/locale.conf").read_text(encoding="utf-8")
+    vconsole = (PROFILE / "airootfs/etc/vconsole.conf").read_text(encoding="utf-8")
+    customize = (PROFILE / "airootfs/root/customize_airootfs.sh").read_text(encoding="utf-8")
+    mirrorlist = (PROFILE / "airootfs/etc/pacman.d/mirrorlist").read_text(encoding="utf-8")
+    check(
+        "LANG=en_US.UTF-8" in locale
+        and "KEYMAP=us" in vconsole
+        and "/usr/share/zoneinfo/UTC" in customize
+        and "geo.mirror.pkgbuild.com" in mirrorlist,
+        "sessão live inicia em inglês, teclado US, UTC e mirrors globais",
+    )
+
+    metadata_paths = [
+        PROFILE / "airootfs/etc/calamares/branding/velaris/branding.desc",
+        PROFILE / "airootfs/etc/os-release",
+        PROFILE / "airootfs/usr/share/velaris/README",
+    ]
+    profile_text = "\n".join(path.read_text(encoding="utf-8") for path in metadata_paths)
+    check(
+        "github.com/bonecopreparado/velaris" not in profile_text,
+        "metadados e suporte apontam para a organização Caeluum",
     )
 
 

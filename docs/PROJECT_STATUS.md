@@ -1,6 +1,6 @@
 # Velaris — estado do projeto
 
-Atualizado em 13 de agosto de 2026.
+Atualizado em 15 de agosto de 2026.
 
 ## Resumo
 
@@ -20,8 +20,13 @@ A Velaris é uma distribuição Arch Linux para x86-64 com KDE Plasma 6, kernel 
 | Plymouth | Tema especial apenas no primeiro boot | Depois do primeiro início, o tema normal é restaurado e o initramfs é reconstruído |
 | Gráficos | Remoção de variáveis globais e do Xorg que desativava aceleração | Mesa, Xorg e o compositor escolhem o caminho correto para cada GPU |
 | Memória | ZRAM com `swappiness=100`, `page-cluster=0`, `earlyoom` e writeback absoluto | Melhor resposta sob pressão sem overcommit agressivo |
+| Memória comprimida | `zswap.enabled=0` em todas as rotas de boot e `systemd-oomd` desativado | Evita compressão e políticas de OOM duplicadas |
 | Processos | Ananicy C++ acompanhado das regras CachyOS | O daemon possui regras reais para aplicar |
+| Shell | Fish como padrão e Fastfetch uma vez por sessão | Sugestões e realce nativos sem hooks Zsh executados a cada tecla |
+| Impressão | `cups.socket` no lugar de `cups.service` permanente | O daemon só inicia quando há trabalho de impressão |
+| Armazenamento | Btrfs com `compress=zstd:1`, `fstrim.timer` e `paccache.timer` | Menor uso de disco e manutenção periódica sem descarte síncrono |
 | Rede | NetworkManager com `wpa_supplicant`; espera online desativada | Menos serviços concorrentes e boot mais direto |
+| Internacionalização | Live em inglês, teclado US, UTC e mirrors globais | Padrão adequado a usuários internacionais e ajustável no Calamares |
 | Repositórios | Assinaturas obrigatórias e mirrorlist oficial do CachyOS | Evita configuração insegura ou lista local envelhecida |
 | Sessão | `plasma-x11-session` incluído | Wayland continua padrão, com X11 disponível para compatibilidade |
 | Imagem | SquashFS Zstd nível 15 | Leitura e instalação mais rápidas, aceitando uma ISO possivelmente maior |
@@ -39,6 +44,8 @@ A Velaris é uma distribuição Arch Linux para x86-64 com KDE Plasma 6, kernel 
 - pacotes obrigatórios, duplicatas e pilhas de rede concorrentes;
 - ausência de renderização por software forçada e `TrustAll`;
 - ajustes de ZRAM, writeback, GRUB, initramfs live e primeiro boot;
+- Fish, ativação do CUPS por socket, política única de OOM e compressão Btrfs;
+- locale inglês, teclado US, UTC, URLs da organização e mirrors globais;
 - sintaxe Bash e formato de `iso_name`.
 
 O GitHub Actions executa essa validação antes de chamar `mkarchiso`.

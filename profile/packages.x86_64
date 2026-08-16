@@ -121,8 +121,6 @@ fastfetch
 reflector
 pacman-contrib
 bash-completion
-zsh
-zsh-completions
 flatpak
 xdg-user-dirs
 xdg-utils
@@ -185,8 +183,7 @@ lib32-gamemode
 ufw
 
 # ── SHELL ────────────────────────────────────────────────────────────────────
-zsh-syntax-highlighting
-zsh-autosuggestions
+fish
 
 # ── BOOT SPLASH ──────────────────────────────────────────────────────────────
 plymouth

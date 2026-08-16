@@ -66,8 +66,8 @@ O primeiro comando deve recusar sudo sem senha. O segundo deve informar que os t
 
 ```bash
 systemctl --failed --no-pager
-systemctl is-enabled NetworkManager.service sddm.service ananicy-cpp.service ufw.service
-systemctl is-enabled NetworkManager-wait-online.service
+systemctl is-enabled NetworkManager.service sddm.service ananicy-cpp.service ufw.service cups.socket paccache.timer
+systemctl is-enabled NetworkManager-wait-online.service cups.service systemd-oomd.service
 plymouth-set-default-theme
 test ! -e /var/lib/velaris/firstboot-plymouth
 ```
@@ -75,8 +75,8 @@ test ! -e /var/lib/velaris/firstboot-plymouth
 Resultados esperados:
 
 - nenhuma unidade em estado `failed`;
-- os quatro serviços principais habilitados;
-- `NetworkManager-wait-online` desabilitado;
+- os serviços principais, `cups.socket` e `paccache.timer` habilitados;
+- `NetworkManager-wait-online` e `cups.service` desabilitados, com `systemd-oomd` mascarado;
 - tema Plymouth igual a `velaris`;
 - marcador do primeiro boot removido.
 
@@ -88,9 +88,21 @@ Reinicie uma segunda vez para garantir que o initramfs restaurado inicia normalm
 swapon --show
 sysctl vm.swappiness vm.page-cluster vm.dirty_bytes vm.dirty_background_bytes
 systemctl status ananicy-cpp.service earlyoom.service --no-pager
+cat /sys/module/zswap/parameters/enabled
+findmnt -no OPTIONS /
 ```
 
-Confirme a presença de ZRAM, `swappiness = 100`, `page-cluster = 0` e os dois serviços sem falhas.
+Confirme a presença de ZRAM, `swappiness = 100`, `page-cluster = 0`, zswap igual a `N`, `compress=zstd:1` no Btrfs e os dois serviços sem falhas.
+
+### Idioma e shell
+
+```bash
+locale
+localectl status
+getent passwd "$USER" | cut -d: -f7
+```
+
+Na sessão live, o padrão deve ser `en_US.UTF-8`, teclado US, UTC e Fish em `/usr/bin/fish`. O usuário instalado deve manter o idioma, teclado e fuso escolhidos no Calamares, mas continuar usando Fish.
 
 ### KDE e gráficos
 
