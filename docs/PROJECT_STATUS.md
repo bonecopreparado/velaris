@@ -18,7 +18,7 @@ Velaris is an Arch Linux distribution for x86-64 with KDE Plasma 6, selectable C
 | Power | Balanced, performance, and power-saver profiles | Predictable trade-off instead of unsafe generic tuning scripts |
 | Partitioning | Real 24 GiB requirement, nested layout, manual mode, and alongside support | Calamares can offer resize/dual-boot when the disk is eligible |
 | Live display | Plasma X11 live fallback plus `xrandr --auto` | Preferred display mode is selected before Calamares opens |
-| Support links | User-session URL bridge and GitHub issue form | Support and Known Issues buttons open in the live browser |
+| Support links | User-session URL bridge, bug form, and permanent Known Issues issue | Both welcome-page links work before the development PR is merged |
 | Installed system | `unpackfs` exclusions, `removeuser`, and mandatory cleanup | No live user, autologin, passwordless sudo, installer helper, or Polkit exception remains |
 | Plasma services | Baloo indexer and unused XEmbed/global-menu bridges masked globally | Lower background activity while keeping essential Plasma services intact |
 | Printing | CUPS socket activation | The daemon starts only when printing is requested |

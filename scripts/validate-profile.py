@@ -201,7 +201,7 @@ def validate_branding(documents: dict[Path, object]) -> None:
     check(
         isinstance(strings, dict)
         and strings.get("supportUrl") == "https://github.com/Caeluum/velaris/issues/new/choose"
-        and strings.get("knownIssuesUrl") == "https://github.com/Caeluum/velaris/blob/main/KNOWN_ISSUES.md",
+        and strings.get("knownIssuesUrl") == "https://github.com/Caeluum/velaris/issues/2",
         "support and known-issues buttons point to their dedicated GitHub pages",
     )
     check(

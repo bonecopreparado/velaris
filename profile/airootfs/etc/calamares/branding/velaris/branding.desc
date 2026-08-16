@@ -16,7 +16,7 @@ strings:
   bootloaderEntryName: Velaris
   productUrl: "https://github.com/Caeluum/velaris"
   supportUrl: "https://github.com/Caeluum/velaris/issues/new/choose"
-  knownIssuesUrl: "https://github.com/Caeluum/velaris/blob/main/KNOWN_ISSUES.md"
+  knownIssuesUrl: "https://github.com/Caeluum/velaris/issues/2"
   releaseNotesUrl: "https://github.com/Caeluum/velaris/releases"
 
 images:
