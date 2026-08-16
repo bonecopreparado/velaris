@@ -253,7 +253,7 @@ def validate_installer_choices(documents: dict[Path, object]) -> None:
         "BORE+LTO exists only in the CPU-gated x86-64-v3 chooser template",
     )
 
-    selection_module = MODULES / "velarisselections"
+    selection_module = PROFILE / "airootfs/usr/lib/calamares/modules/velarisselections"
     module_desc = load_yaml(selection_module / "module.desc")
     module_script = selection_module / "main.py"
     module_text = module_script.read_text(encoding="utf-8") if module_script.is_file() else ""
@@ -262,6 +262,7 @@ def validate_installer_choices(documents: dict[Path, object]) -> None:
         and module_desc.get("type") == "job"
         and module_desc.get("interface") == "python"
         and module_desc.get("script") == "main.py"
+        and module_desc.get("noconfig") is True
         and all(
             token in module_text
             for token in ("rootMountPoint", "packagechooser_{kind}", '"kernel"', '"graphics"', '"profile"')
