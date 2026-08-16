@@ -1,0 +1,5 @@
+---
+type: job
+name: velarisselections
+interface: python
+script: main.py

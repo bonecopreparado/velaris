@@ -69,7 +69,9 @@ def validate_yaml_and_instances() -> dict[Path, object]:
         if pair in instance_pairs:
             duplicate_pairs.add(pair)
         instance_pairs.add(pair)
-        instance_configs.append(MODULES / str(instance.get("config", "")))
+        config = instance.get("config")
+        if config:
+            instance_configs.append(MODULES / str(config))
 
     check(not duplicate_pairs, "instâncias do Calamares não estão duplicadas")
     check(all(path.is_file() for path in instance_configs), "cada instância aponta para um arquivo existente")
@@ -121,7 +123,7 @@ def validate_yaml_and_instances() -> dict[Path, object]:
         ("packages", "cleanup"),
         ("shellprocess", "firstboot"),
         ("shellprocess", "keyring"),
-        ("contextualprocess", "selections"),
+        ("velarisselections", "selections"),
         ("shellprocess", "applyselections"),
     }
     check(required_pairs <= instance_pairs, "instâncias críticas da instalação estão declaradas")
@@ -155,7 +157,7 @@ def validate_yaml_and_instances() -> dict[Path, object]:
     check(ordered, "conta live é removida antes da criação do usuário final")
     selection_order = [
         "unpackfs@velaris",
-        "contextualprocess@selections",
+        "velarisselections@selections",
         "shellprocess@applyselections",
         "initcpiocfg@velaris",
         "initcpio",
@@ -251,15 +253,27 @@ def validate_installer_choices(documents: dict[Path, object]) -> None:
         "BORE+LTO exists only in the CPU-gated x86-64-v3 chooser template",
     )
 
-    contextual = documents.get(MODULES / "contextualprocess_selections.conf")
-    contextual_text = repr(contextual) if isinstance(contextual, dict) else ""
+    selection_module = MODULES / "velarisselections"
+    module_desc = load_yaml(selection_module / "module.desc")
+    module_script = selection_module / "main.py"
+    module_text = module_script.read_text(encoding="utf-8") if module_script.is_file() else ""
     check(
-        all(
-            token in contextual_text
-            for token in ("packagechooser_kernel", "packagechooser_graphics", "packagechooser_profile", "record-selection")
+        isinstance(module_desc, dict)
+        and module_desc.get("type") == "job"
+        and module_desc.get("interface") == "python"
+        and module_desc.get("script") == "main.py"
+        and all(
+            token in module_text
+            for token in ("rootMountPoint", "packagechooser_{kind}", '"kernel"', '"graphics"', '"profile"')
         ),
-        "contextual process records every installer choice",
+        "local Calamares module records every installer choice",
     )
+    try:
+        compile(module_text, str(module_script), "exec")
+        module_syntax_valid = bool(module_text)
+    except SyntaxError:
+        module_syntax_valid = False
+    check(module_syntax_valid, "local Calamares selection module has valid Python syntax")
 
     partition = documents.get(MODULES / "partition_velaris.conf")
     welcome = documents.get(MODULES / "welcome_velaris.conf")
@@ -681,7 +695,6 @@ def validate_shell() -> None:
         PROFILE / "airootfs/usr/lib/velaris-live/prepare-installer",
         PROFILE / "airootfs/usr/lib/velaris-live/gpu-module-policy",
         PROFILE / "airootfs/usr/lib/velaris-live/bin/xdg-open",
-        PROFILE / "airootfs/usr/lib/velaris/record-selection",
         PROFILE / "airootfs/usr/lib/velaris/apply-selections",
         PROFILE / "airootfs/usr/lib/velaris/apply-runtime-profile",
     ]

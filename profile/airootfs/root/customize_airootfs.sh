@@ -127,7 +127,6 @@ chmod 0755 \
     /usr/lib/velaris-live/gpu-module-policy \
     /usr/lib/velaris-live/prepare-installer \
     /usr/lib/velaris-live/bin/xdg-open \
-    /usr/lib/velaris/record-selection \
     /usr/lib/velaris/apply-selections \
     /usr/lib/velaris/apply-runtime-profile
 
