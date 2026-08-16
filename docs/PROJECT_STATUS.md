@@ -11,13 +11,13 @@ Velaris is an Arch Linux distribution for x86-64 with KDE Plasma 6, selectable C
 | Area | Change | Expected result |
 |---|---|---|
 | Calamares | Dedicated Velaris instances and configuration files | Package upgrades cannot silently replace project configuration |
-| Installer UI | Horizontal welcome artwork, consistent styling, larger window, and scrollable language popup | Clearer layout without the oversized square logo |
+| Installer UI | Sidebar-free compact layout, rounded selectors, and scrollable language popup | More usable space without the legacy black panel or oversized chooser images |
 | Kernel selection | CPU-gated BORE+LTO, regular CachyOS, CachyOS LTS, and Arch choices | High performance where supported without breaking older CPUs |
 | Graphics | Early NVIDIA generation policy plus PCI-based AMD/Intel/NVIDIA and VM detection | The live session and installer avoid a blind graphics default |
-| NVIDIA | Kernel-matched NVIDIA Open modules for each kernel | Offline installation without a mismatched module |
+| NVIDIA | The live module stays in the ISO; alternate matching modules download after selection | Smaller ISO without installing a mismatched module |
 | Power | Balanced, performance, and power-saver profiles | Predictable trade-off instead of unsafe generic tuning scripts |
-| Partitioning | Real 24 GiB requirement, nested layout, manual mode, and alongside support | Calamares can offer resize/dual-boot when the disk is eligible |
-| Live display | Plasma X11 live fallback plus `xrandr --auto` | Preferred display mode is selected before Calamares opens |
+| Partitioning | 18 GiB requirement, nested layout, manual mode, and alongside-first support | Calamares can offer resize/dual-boot when an existing partition is eligible |
+| Display | Plasma X11 compatibility default plus preferred-mode setup in live and installed sessions | Reliable native resolution on physical hardware and common VMs |
 | Support links | User-session URL bridge, bug form, and permanent Known Issues issue | Both welcome-page links work before the development PR is merged |
 | Installed system | `unpackfs` exclusions, `removeuser`, and mandatory cleanup | No live user, autologin, passwordless sudo, installer helper, or Polkit exception remains |
 | Plasma services | Baloo indexer and unused XEmbed/global-menu bridges masked globally | Lower background activity while keeping essential Plasma services intact |

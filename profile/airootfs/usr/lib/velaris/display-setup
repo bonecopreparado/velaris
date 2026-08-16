@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -u
+
+command -v xrandr >/dev/null 2>&1 || exit 0
+[[ -n "${DISPLAY:-}" ]] || exit 0
+
+for _attempt in {1..24}; do
+    if output_list="$(xrandr --query 2>/dev/null | awk '$2 == "connected" { print $1 }')"; then
+        while IFS= read -r output; do
+            [[ -n "${output}" ]] || continue
+            xrandr --output "${output}" --preferred >/dev/null 2>&1 || true
+        done <<< "${output_list}"
+        exit 0
+    fi
+    sleep 0.25
+done
+
+exit 0

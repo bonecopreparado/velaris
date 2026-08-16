@@ -72,7 +72,7 @@ The project does not rely on unmeasured, aggressive tweaks. Every decision shoul
 
 - Hardware-aware kernel chooser with a CPU compatibility gate for the x86-64-v3 BORE+LTO build.
 - Early live-boot selection between NVIDIA Open and Nouveau, followed by automatic installer recommendations for NVIDIA, AMD, Intel, and virtual machines.
-- Matching offline NVIDIA Open modules for every selectable kernel.
+- A compact live image that downloads the selected alternate kernel, matching NVIDIA module, full language fonts, and optional desktop tools during installation.
 - Balanced, performance, and power-saver profiles applied through the platform power-profile service.
 - ZRAM to reduce the impact of memory pressure.
 - zswap explicitly disabled to avoid compressing the same memory twice.
@@ -106,7 +106,7 @@ sha256sum -c velaris-*.iso.sha256
 4. Test networking, audio, graphics, and storage from the live environment.
 5. Open Calamares and carefully review the partition layout before confirming the installation.
 
-For a Windows dual boot, disable Windows Fast Startup, suspend BitLocker if it is enabled, and leave unallocated disk space before starting the installer. Calamares will offer **Install alongside** only when it finds a safely resizable existing partition and at least 24 GiB of usable space.
+The installer requires an internet connection for the selected kernel and optional desktop payload. For a Windows dual boot, disable Windows Fast Startup, suspend BitLocker if it is enabled, and leave unallocated disk space before starting the installer. Calamares will offer **Install alongside** only when it finds a safely resizable existing partition and at least 18 GiB of usable space; an empty disk only shows erase and manual modes.
 
 See [Known issues](KNOWN_ISSUES.md) before installing on NVIDIA legacy hardware, virtual machines, or Secure Boot systems.
 

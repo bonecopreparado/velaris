@@ -12,6 +12,5 @@ Velaris is currently in Beta. Back up important files before installation and
 carefully review the partition layout shown by Calamares before confirming any
 changes.
 
-KDE Plasma on Wayland is the primary desktop session. Development builds may
-also provide a Plasma X11 session for applications or drivers that require
-additional compatibility.
+KDE Plasma on X11 is the compatibility default for reliable first-boot display
+detection. Plasma Wayland remains available from the SDDM session selector.

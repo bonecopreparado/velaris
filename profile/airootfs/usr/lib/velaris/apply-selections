@@ -68,6 +68,43 @@ nvidia_userspace=(nvidia-utils lib32-nvidia-utils nvidia-settings nvidia-prime)
 vm_packages=(open-vm-tools virtualbox-guest-utils qemu-guest-agent spice-vdagent)
 remove_candidates=()
 
+detect_virtualization() {
+    local detected product
+    detected="$(systemd-detect-virt --vm 2>/dev/null || true)"
+    case "${detected}" in
+        vmware|oracle|kvm|qemu) printf '%s\n' "${detected}"; return ;;
+    esac
+
+    product="$(tr '[:upper:]' '[:lower:]' < /sys/class/dmi/id/product_name 2>/dev/null || true)"
+    case "${product}" in
+        *vmware*) printf '%s\n' vmware ;;
+        *virtualbox*) printf '%s\n' oracle ;;
+        *qemu*|*kvm*|*bochs*) printf '%s\n' kvm ;;
+        *) printf '%s\n' none ;;
+    esac
+}
+
+virtualization="$(detect_virtualization)"
+
+# Keep the live image compact. Alternate kernels and non-essential desktop
+# payloads are downloaded into the target only after the user's choices are
+# known. The welcome page requires a working network before installation.
+online_packages=(
+    "${selected_kernel}"
+    kinfocenter
+    ksystemlog
+    partitionmanager
+    filelight
+    plasma-workspace-wallpapers
+    noto-fonts-cjk
+)
+if [[ "${graphics_choice}" == "nvidia-open" ]]; then
+    online_packages+=("${selected_nvidia}" "${nvidia_userspace[@]}")
+fi
+
+pacman -Sy --noconfirm
+pacman -S --needed --noconfirm -- "${online_packages[@]}"
+
 if [[ "${kernel_choice}" != "bore-lto" ]]; then
     remove_candidates+=(cachyos-v3-mirrorlist)
 fi
@@ -88,9 +125,7 @@ if [[ "${graphics_choice}" != "nvidia-open" ]]; then
     remove_candidates+=("${nvidia_userspace[@]}")
 fi
 
-virtualization="none"
 if [[ "${graphics_choice}" == "virtual" ]]; then
-    virtualization="$(systemd-detect-virt 2>/dev/null || true)"
     case "${virtualization}" in
         vmware) remove_candidates+=(virtualbox-guest-utils qemu-guest-agent spice-vdagent) ;;
         oracle) remove_candidates+=(open-vm-tools qemu-guest-agent spice-vdagent) ;;
@@ -171,6 +206,7 @@ if [[ "${graphics_choice}" == "virtual" ]]; then
         kvm|qemu)
             enable_if_present qemu-guest-agent.service
             enable_if_present spice-vdagentd.service
+            enable_if_present spice-vdagentd.socket
             ;;
     esac
 fi

@@ -209,8 +209,9 @@ def validate_branding(documents: dict[Path, object]) -> None:
     check(
         isinstance(images, dict)
         and images.get("productWelcome") == "welcome.svg"
-        and branding.get("windowSize") == "1000px,680px",
-        "welcome page uses horizontal artwork in a predictable window size",
+        and branding.get("windowSize") == "960px,640px"
+        and branding.get("sidebar") == "none",
+        "installer uses compact horizontal artwork without the legacy sidebar",
     )
     qss = PROFILE / "airootfs/usr/share/velaris/calamares/calamares.qss"
     qss_text = qss.read_text(encoding="utf-8") if qss.is_file() else ""
@@ -218,6 +219,12 @@ def validate_branding(documents: dict[Path, object]) -> None:
         "QComboBox#languageWidget QAbstractItemView" in qss_text
         and "min-height: 380px" in qss_text,
         "language chooser receives a large scrollable popup",
+    )
+    check(
+        "QComboBox::drop-down" in qss_text
+        and "border-top-right-radius" in qss_text
+        and "min-width: 280px" in qss_text,
+        "installer choices and combo arrows use the compact rounded layout",
     )
 
 
@@ -283,10 +290,11 @@ def validate_installer_choices(documents: dict[Path, object]) -> None:
         isinstance(partition, dict)
         and partition.get("allowManualPartitioning") is True
         and partition.get("drawNestedPartitions") is True
-        and partition.get("initialPartitioningChoice") == "none"
+        and partition.get("initialPartitioningChoice") == "alongside"
         and isinstance(requirements, dict)
-        and float(requirements.get("requiredStorage", 0)) >= 24,
-        "manual and alongside partitioning have a real storage requirement",
+        and float(requirements.get("requiredStorage", 0)) >= 18
+        and "internet" in requirements.get("required", []),
+        "alongside partitioning is preferred and online installation is required",
     )
 
 
@@ -438,14 +446,8 @@ def validate_packages_and_performance() -> None:
 
     package_names = {package.split("/", 1)[-1] for package in packages}
     required = {
-        "linux-cachyos-bore-lto",
         "linux-cachyos",
-        "linux-cachyos-lts",
-        "linux",
-        "linux-cachyos-bore-lto-nvidia-open",
         "linux-cachyos-nvidia-open",
-        "linux-cachyos-lts-nvidia-open",
-        "nvidia-open",
         "nvidia-utils",
         "lib32-nvidia-utils",
         "archlinux-keyring",
@@ -479,7 +481,22 @@ def validate_packages_and_performance() -> None:
         "fish",
         "pacman-contrib",
     }
-    check(required <= package_names, "selectable kernels, matched graphics stacks, VM tools, and installer packages are present")
+    check(required <= package_names, "live kernel, graphics stacks, VM tools, and installer packages are present")
+    online_only = {
+        "linux-cachyos-bore-lto",
+        "linux-cachyos-lts",
+        "linux",
+        "linux-cachyos-bore-lto-nvidia-open",
+        "linux-cachyos-lts-nvidia-open",
+        "nvidia-open",
+        "plasma-workspace-wallpapers",
+        "noto-fonts-cjk",
+        "kinfocenter",
+        "ksystemlog",
+        "partitionmanager",
+        "filelight",
+    }
+    check(not online_only & package_names, "alternate kernels and optional desktop payload stay out of the ISO")
     check(not {"iwd", "dhcpcd"} & package_names, "não há pilhas de rede concorrentes com o NetworkManager")
     check(
         not {"zsh", "zsh-completions", "zsh-syntax-highlighting", "zsh-autosuggestions"} & package_names,
@@ -520,7 +537,7 @@ def validate_packages_and_performance() -> None:
         "Architecture = x86_64 x86_64_v3" in build_pacman
         and build_pacman.index("[cachyos]") < build_pacman.index("[cachyos-v3]")
         and "#[cachyos-v3]" in runtime_pacman,
-        "v3 kernel packages build safely while the installed v3 repository stays opt-in",
+        "the v3 repository is available to the online installer and stays opt-in",
     )
     forced_xorg = [
         PROFILE / "airootfs/etc/X11/xorg.conf.d/10-vmware.conf",
@@ -654,9 +671,12 @@ def validate_first_boot(documents: dict[Path, object]) -> None:
                 '"${module_dir}/vmlinuz"',
                 "remove_candidates+=(cachyos-v3-mirrorlist)",
                 "Architecture = x86_64",
+                "pacman -Sy --noconfirm",
+                "plasma-workspace-wallpapers",
+                "/sys/class/dmi/id/product_name",
             )
         ),
-        "selection helper gates v3, keeps one kernel, configures NVIDIA, and handles VMs",
+        "selection helper downloads the chosen stack, gates v3, and handles VMs",
     )
     power_service = PROFILE / "airootfs/usr/lib/systemd/system/velaris-performance-profile.service"
     power_helper = PROFILE / "airootfs/usr/lib/velaris/apply-runtime-profile"
@@ -696,6 +716,7 @@ def validate_shell() -> None:
         PROFILE / "airootfs/usr/lib/velaris-live/prepare-installer",
         PROFILE / "airootfs/usr/lib/velaris-live/gpu-module-policy",
         PROFILE / "airootfs/usr/lib/velaris-live/bin/xdg-open",
+        PROFILE / "airootfs/usr/lib/velaris/display-setup",
         PROFILE / "airootfs/usr/lib/velaris/apply-selections",
         PROFILE / "airootfs/usr/lib/velaris/apply-runtime-profile",
     ]

@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Velaris display setup
+Comment=Select the display's preferred resolution
+Exec=/usr/lib/velaris/display-setup
+OnlyShowIn=KDE;
+NoDisplay=true
+X-KDE-autostart-phase=1

@@ -3,8 +3,9 @@ componentName: velaris
 
 welcomeStyleCalamares: true
 welcomeExpandingLogo: false
-windowSize: 1000px,680px
+windowSize: 960px,640px
 windowPlacement: center
+sidebar: none
 
 strings:
   productName: Velaris
@@ -27,8 +28,4 @@ images:
 slideshow: "show.qml"
 slideshowAPI: 2
 
-style:
-  sidebarBackground: "#0b1730"
-  sidebarText: "#FFFFFF"
-  sidebarTextSelect: "#7db8ff"
-  sidebarTextHighlight: "#58a6ff"
+style: {}
