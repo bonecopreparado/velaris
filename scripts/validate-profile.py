@@ -21,6 +21,14 @@ PROFILE = ROOT / "profile"
 CALAMARES = PROFILE / "airootfs/etc/calamares"
 MODULES = CALAMARES / "modules"
 FAILURES: list[str] = []
+OPTIONAL_DESKTOP_PACKAGES = {
+    "plasma-workspace-wallpapers",
+    "noto-fonts-cjk",
+    "kinfocenter",
+    "ksystemlog",
+    "partitionmanager",
+    "filelight",
+}
 
 
 def check(condition: bool, message: str) -> None:
@@ -520,20 +528,15 @@ def validate_packages_and_performance() -> None:
         "pacman-contrib",
     }
     check(required <= package_names, "live kernel, graphics stacks, VM tools, and installer packages are present")
-    online_only = {
+    alternate_stacks = {
         "linux-cachyos-bore-lto",
         "linux-cachyos-lts",
         "linux",
         "linux-cachyos-bore-lto-nvidia-open",
         "linux-cachyos-lts-nvidia-open",
         "nvidia-open",
-        "plasma-workspace-wallpapers",
-        "noto-fonts-cjk",
-        "kinfocenter",
-        "ksystemlog",
-        "partitionmanager",
-        "filelight",
     }
+    online_only = alternate_stacks | OPTIONAL_DESKTOP_PACKAGES
     check(not online_only & package_names, "alternate kernels and optional desktop payload stay out of the ISO")
     check(not {"iwd", "dhcpcd"} & package_names, "não há pilhas de rede concorrentes com o NetworkManager")
     check(
@@ -710,14 +713,22 @@ def validate_first_boot(documents: dict[Path, object]) -> None:
                 "remove_candidates+=(cachyos-v3-mirrorlist)",
                 "Architecture = x86_64",
                 "pacman -Sy --noconfirm",
+                "timeout --foreground --signal=TERM --kill-after=10s 60s",
+                "timeout --foreground --signal=TERM --kill-after=10s 180s",
+                "pacman -Sw --needed --noconfirm",
+                "Installing the downloaded boot packages from the local cache",
+                "Selected boot stack is already bundled; skipping repository access",
                 "fallback_to_cachyos",
-                "Optional desktop extras could not be downloaded",
+                "Optional desktop downloads are skipped during installation",
                 "/var/log/velaris-installer.log",
-                "plasma-workspace-wallpapers",
                 "/sys/class/dmi/id/product_name",
             )
         ),
-        "selection helper downloads the chosen stack, gates v3, and handles VMs",
+        "selection helper bounds downloads, falls back safely, gates v3, and handles VMs",
+    )
+    check(
+        not any(package in selection_text for package in OPTIONAL_DESKTOP_PACKAGES),
+        "installer never downloads optional desktop payloads at runtime",
     )
     power_service = PROFILE / "airootfs/usr/lib/systemd/system/velaris-performance-profile.service"
     power_helper = PROFILE / "airootfs/usr/lib/velaris/apply-runtime-profile"

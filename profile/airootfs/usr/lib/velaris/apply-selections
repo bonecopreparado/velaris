@@ -114,27 +114,37 @@ fallback_to_cachyos() {
 
 sync_repositories() {
     local attempt
-    rm -f /var/lib/pacman/db.lck
-    for attempt in 1 2 3; do
-        printf '[Velaris] Synchronizing package databases (attempt %s/3).\n' "${attempt}"
-        if pacman -Sy --noconfirm; then
+    for attempt in 1 2; do
+        rm -f /var/lib/pacman/db.lck
+        printf '[Velaris] Synchronizing package databases (attempt %s/2, max 60 seconds).\n' "${attempt}"
+        if timeout --foreground --signal=TERM --kill-after=10s 60s \
+            pacman -Sy --noconfirm; then
             return 0
         fi
+        rm -f /var/lib/pacman/db.lck
         sleep 2
     done
     return 1
 }
 
-install_packages() {
+download_packages() {
     local attempt
-    for attempt in 1 2 3; do
-        printf '[Velaris] Installing selected packages (attempt %s/3).\n' "${attempt}"
-        if pacman -S --needed --noconfirm -- "$@"; then
+    for attempt in 1 2; do
+        rm -f /var/lib/pacman/db.lck
+        printf '[Velaris] Downloading selected boot packages (attempt %s/2, max 180 seconds).\n' "${attempt}"
+        if timeout --foreground --signal=TERM --kill-after=10s 180s \
+            pacman -Sw --needed --noconfirm -- "$@"; then
             return 0
         fi
+        rm -f /var/lib/pacman/db.lck
         sleep 2
     done
     return 1
+}
+
+install_cached_packages() {
+    printf '[Velaris] Installing the downloaded boot packages from the local cache.\n'
+    pacman -S --needed --noconfirm -- "$@"
 }
 
 # Keep the live image compact. Alternate kernels are downloaded after the
@@ -152,15 +162,14 @@ for package in "${critical_packages[@]}"; do
     fi
 done
 
-repositories_ready=false
-if sync_repositories; then
-    repositories_ready=true
-fi
-
 if (( ${#missing_critical[@]} )); then
-    if [[ "${repositories_ready}" != true ]] || ! install_packages "${missing_critical[@]}"; then
+    if ! sync_repositories \
+        || ! download_packages "${missing_critical[@]}" \
+        || ! install_cached_packages "${missing_critical[@]}"; then
         fallback_to_cachyos
     fi
+else
+    printf '[Velaris] Selected boot stack is already bundled; skipping repository access.\n'
 fi
 
 fallback_critical=("${selected_kernel}")
@@ -174,21 +183,7 @@ for package in "${fallback_critical[@]}"; do
     fi
 done
 
-optional_packages=(
-    kinfocenter
-    ksystemlog
-    partitionmanager
-    filelight
-    plasma-workspace-wallpapers
-    noto-fonts-cjk
-)
-if [[ "${repositories_ready}" == true ]]; then
-    if ! install_packages "${optional_packages[@]}"; then
-        printf '[Velaris] Optional desktop extras could not be downloaded; installation will continue.\n' >&2
-    fi
-else
-    printf '[Velaris] Package mirrors are unavailable; optional desktop extras were skipped.\n' >&2
-fi
+printf '[Velaris] Optional desktop downloads are skipped during installation.\n'
 
 if [[ "${kernel_choice}" != "bore-lto" ]]; then
     remove_candidates+=(cachyos-v3-mirrorlist)
