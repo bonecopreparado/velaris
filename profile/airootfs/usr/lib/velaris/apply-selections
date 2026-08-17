@@ -1,5 +1,18 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -Eeuo pipefail
+
+install -d -m 0755 /var/log
+exec > >(tee -a /var/log/velaris-installer.log) 2>&1
+
+on_error() {
+    local status="$?"
+    printf 'Velaris selection step failed at line %s (exit %s): %s\n' \
+        "${BASH_LINENO[0]:-${LINENO}}" "${status}" "${BASH_COMMAND}" >&2
+    exit "${status}"
+}
+trap on_error ERR
+
+printf '[Velaris] Applying kernel, graphics and performance selections.\n'
 
 selection_dir="/etc/velaris/installer"
 kernel_choice="$(<"${selection_dir}/kernel")"
@@ -86,11 +99,82 @@ detect_virtualization() {
 
 virtualization="$(detect_virtualization)"
 
-# Keep the live image compact. Alternate kernels and non-essential desktop
-# payloads are downloaded into the target only after the user's choices are
-# known. The welcome page requires a working network before installation.
-online_packages=(
-    "${selected_kernel}"
+fallback_to_cachyos() {
+    printf '[Velaris] Selected online kernel stack was unavailable; using the bootable CachyOS stack bundled with the ISO.\n' >&2
+    kernel_choice="cachyos"
+    selected_kernel="linux-cachyos"
+    selected_boot_suffix="linux-cachyos"
+    selected_nvidia="linux-cachyos-nvidia-open"
+    sed -i \
+        -e 's/^\[cachyos-v3\]/#[cachyos-v3]/' \
+        -e 's|^Include = /etc/pacman.d/cachyos-v3-mirrorlist|#Include = /etc/pacman.d/cachyos-v3-mirrorlist|' \
+        -e 's|^Architecture =.*|Architecture = x86_64|' \
+        /etc/pacman.conf
+}
+
+sync_repositories() {
+    local attempt
+    rm -f /var/lib/pacman/db.lck
+    for attempt in 1 2 3; do
+        printf '[Velaris] Synchronizing package databases (attempt %s/3).\n' "${attempt}"
+        if pacman -Sy --noconfirm; then
+            return 0
+        fi
+        sleep 2
+    done
+    return 1
+}
+
+install_packages() {
+    local attempt
+    for attempt in 1 2 3; do
+        printf '[Velaris] Installing selected packages (attempt %s/3).\n' "${attempt}"
+        if pacman -S --needed --noconfirm -- "$@"; then
+            return 0
+        fi
+        sleep 2
+    done
+    return 1
+}
+
+# Keep the live image compact. Alternate kernels are downloaded after the
+# choice is known, but the bundled CachyOS kernel remains a guaranteed fallback
+# so a mirror or DNS failure can never leave the machine without a bootable OS.
+critical_packages=("${selected_kernel}")
+if [[ "${graphics_choice}" == "nvidia-open" ]]; then
+    critical_packages+=("${selected_nvidia}" "${nvidia_userspace[@]}")
+fi
+
+missing_critical=()
+for package in "${critical_packages[@]}"; do
+    if ! pacman -Qq "${package}" >/dev/null 2>&1; then
+        missing_critical+=("${package}")
+    fi
+done
+
+repositories_ready=false
+if sync_repositories; then
+    repositories_ready=true
+fi
+
+if (( ${#missing_critical[@]} )); then
+    if [[ "${repositories_ready}" != true ]] || ! install_packages "${missing_critical[@]}"; then
+        fallback_to_cachyos
+    fi
+fi
+
+fallback_critical=("${selected_kernel}")
+if [[ "${graphics_choice}" == "nvidia-open" ]]; then
+    fallback_critical+=("${selected_nvidia}" "${nvidia_userspace[@]}")
+fi
+for package in "${fallback_critical[@]}"; do
+    if ! pacman -Qq "${package}" >/dev/null 2>&1; then
+        printf 'Required boot package is unavailable after fallback: %s\n' "${package}" >&2
+        exit 67
+    fi
+done
+
+optional_packages=(
     kinfocenter
     ksystemlog
     partitionmanager
@@ -98,12 +182,13 @@ online_packages=(
     plasma-workspace-wallpapers
     noto-fonts-cjk
 )
-if [[ "${graphics_choice}" == "nvidia-open" ]]; then
-    online_packages+=("${selected_nvidia}" "${nvidia_userspace[@]}")
+if [[ "${repositories_ready}" == true ]]; then
+    if ! install_packages "${optional_packages[@]}"; then
+        printf '[Velaris] Optional desktop extras could not be downloaded; installation will continue.\n' >&2
+    fi
+else
+    printf '[Velaris] Package mirrors are unavailable; optional desktop extras were skipped.\n' >&2
 fi
-
-pacman -Sy --noconfirm
-pacman -S --needed --noconfirm -- "${online_packages[@]}"
 
 if [[ "${kernel_choice}" != "bore-lto" ]]; then
     remove_candidates+=(cachyos-v3-mirrorlist)
@@ -143,7 +228,9 @@ for package in "${remove_candidates[@]}"; do
     fi
 done
 if (( ${#installed_remove[@]} )); then
-    pacman -Rns --noconfirm -- "${installed_remove[@]}"
+    if ! pacman -Rns --noconfirm -- "${installed_remove[@]}"; then
+        printf '[Velaris] Non-selected live packages could not all be removed; continuing safely.\n' >&2
+    fi
 fi
 if [[ "${kernel_choice}" != "bore-lto" ]]; then
     sed -i -E 's|^Architecture =.*|Architecture = x86_64|' /etc/pacman.conf
@@ -192,7 +279,8 @@ fi
 enable_if_present() {
     local unit="$1"
     if [[ -e "/usr/lib/systemd/system/${unit}" ]]; then
-        systemctl enable "${unit}"
+        systemctl enable "${unit}" || \
+            printf '[Velaris] Optional guest service could not be enabled: %s\n' "${unit}" >&2
     fi
 }
 

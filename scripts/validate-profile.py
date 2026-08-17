@@ -124,6 +124,7 @@ def validate_yaml_and_instances() -> dict[Path, object]:
         ("shellprocess", "firstboot"),
         ("shellprocess", "keyring"),
         ("velarisselections", "selections"),
+        ("shellprocess", "targetnetwork"),
         ("shellprocess", "applyselections"),
     }
     check(required_pairs <= instance_pairs, "instâncias críticas da instalação estão declaradas")
@@ -158,6 +159,7 @@ def validate_yaml_and_instances() -> dict[Path, object]:
     selection_order = [
         "unpackfs@velaris",
         "velarisselections@selections",
+        "shellprocess@targetnetwork",
         "shellprocess@applyselections",
         "initcpiocfg@velaris",
         "initcpio",
@@ -238,12 +240,29 @@ def validate_installer_choices(documents: dict[Path, object]) -> None:
         document = documents.get(MODULES / filename)
         items = document.get("items", []) if isinstance(document, dict) else []
         ids = {str(item.get("id")) for item in items if isinstance(item, dict)}
+        screenshots = [
+            str(item.get("screenshot", ""))
+            for item in items
+            if isinstance(item, dict)
+        ]
+        screenshot_files = [
+            PROFILE / "airootfs" / path.lstrip("/")
+            for path in screenshots
+            if path.startswith("/")
+        ]
         check(
             isinstance(document, dict)
             and document.get("mode") == "required"
             and document.get("method") == "legacy"
             and expected <= ids,
             f"{filename} defines one required, locally processed choice",
+        )
+        check(
+            len(screenshots) == len(items)
+            and all(screenshots)
+            and len(screenshot_files) == len(items)
+            and all(path.is_file() for path in screenshot_files),
+            f"{filename} gives every choice a bundled screenshot",
         )
 
     v3_template = load_yaml(PROFILE / "airootfs/usr/share/velaris/calamares/kernel-v3.conf")
@@ -258,6 +277,15 @@ def validate_installer_choices(documents: dict[Path, object]) -> None:
         and v3_template.get("default") == "bore-lto"
         and "bore-lto" in v3_ids,
         "BORE+LTO exists only in the CPU-gated x86-64-v3 chooser template",
+    )
+    template_paths = [
+        PROFILE / "airootfs" / str(item.get("screenshot", "")).lstrip("/")
+        for item in v3_items
+        if isinstance(item, dict) and str(item.get("screenshot", "")).startswith("/")
+    ]
+    check(
+        len(template_paths) == len(v3_items) and all(path.is_file() for path in template_paths),
+        "CPU-gated kernel choices retain their bundled screenshots",
     )
 
     selection_module = PROFILE / "airootfs/usr/lib/calamares/modules/velarisselections"
@@ -294,7 +322,17 @@ def validate_installer_choices(documents: dict[Path, object]) -> None:
         and isinstance(requirements, dict)
         and float(requirements.get("requiredStorage", 0)) >= 18
         and "internet" in requirements.get("required", []),
-        "alongside partitioning is preferred and online installation is required",
+        "alongside partitioning is enabled for detected resizable systems and online installation is required",
+    )
+
+    target_network = documents.get(MODULES / "shellprocess_targetnetwork.conf")
+    network_script = repr(target_network.get("script", [])) if isinstance(target_network, dict) else ""
+    check(
+        isinstance(target_network, dict)
+        and target_network.get("dontChroot") is True
+        and "${ROOT}/etc/resolv.conf" in network_script
+        and "/etc/resolv.conf" in network_script,
+        "target receives the live connection resolver before chrooted downloads",
     )
 
 
@@ -672,6 +710,9 @@ def validate_first_boot(documents: dict[Path, object]) -> None:
                 "remove_candidates+=(cachyos-v3-mirrorlist)",
                 "Architecture = x86_64",
                 "pacman -Sy --noconfirm",
+                "fallback_to_cachyos",
+                "Optional desktop extras could not be downloaded",
+                "/var/log/velaris-installer.log",
                 "plasma-workspace-wallpapers",
                 "/sys/class/dmi/id/product_name",
             )
